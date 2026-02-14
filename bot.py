@@ -675,9 +675,6 @@ class ForumManager:
 # ============================================
 # CLASE BANNER SCRAPER
 # ============================================
-# ============================================
-# CLASE BANNER SCRAPER
-# ============================================
 class BannerScraper:
     """Clase para hacer scraping de los banners de warps en Prydwen"""
     
@@ -1131,9 +1128,9 @@ async def create_endgame_post(forum_channel, endgame_content):
     # Puedes usar imágenes diferentes para cada modo
     # IMPORTANTE: Reemplaza estas URLs con las imágenes que quieras usar
     image_urls = {
-        'Memory of Chaos': 'https://ejemplo.com/moc.jpg',
-        'Pure Fiction': 'https://ejemplo.com/pf.jpg', 
-        'Apocalyptic Shadow': 'https://ejemplo.com/as.jpg'
+        'Memory of Chaos': 'https://img.game8.co/3870023/895243530f7a643802fda6397189f441.png/show',
+        'Pure Fiction': 'https://img.game8.co/3959509/cb02a378a39bc1fb9bc6cc12ea6bafc1.png/show', 
+        'Apocalyptic Shadow': 'https://img.game8.co/3911733/48501779fee8f84224df2eab5f1d8059.png/show'
     }
     
     image_url = image_urls.get(endgame_content.content_type, 'https://ejemplo.com/default.jpg')
