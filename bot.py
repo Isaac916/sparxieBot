@@ -35,527 +35,734 @@ CHARACTER_ICONS = [
         "id": "acheron",
         "name": "Acheron",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/24/Character_Acheron_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Nihility",
+        "element": "Lightning"
     },
     {
         "id": "aglaea",
         "name": "Aglaea",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/f/f8/Character_Aglaea_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Remembrance",
+        "element": "Lightning"
     },
     {
         "id": "anaxa",
         "name": "Anaxa",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/f/f0/Character_Anaxa_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Erudition",
+        "element": "Wind"
     },
     {
         "id": "archer",
         "name": "Archer",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/8/8f/Character_Archer_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Unknown",
+        "element": "Unknown"
     },
     {
         "id": "argenti",
         "name": "Argenti",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c0/Character_Argenti_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Erudition",
+        "element": "Physical"
     },
     {
         "id": "arlan",
         "name": "Arlan",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/a/a9/Character_Arlan_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Destruction",
+        "element": "Lightning"
     },
     {
         "id": "asta",
         "name": "Asta",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/9f/Character_Asta_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Harmony",
+        "element": "Fire"
     },
     {
         "id": "aventurine",
         "name": "Aventurine",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/d/da/Character_Aventurine_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Preservation",
+        "element": "Imaginary"
     },
     {
         "id": "bailu",
         "name": "Bailu",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/47/Character_Bailu_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Abundance",
+        "element": "Lightning"
     },
     {
         "id": "black-swan",
         "name": "Black Swan",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/90/Character_Black_Swan_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Nihility",
+        "element": "Wind"
     },
     {
         "id": "blade",
         "name": "Blade",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/90/Character_Blade_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Destruction",
+        "element": "Wind"
     },
     {
         "id": "boothill",
         "name": "Boothill",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/78/Character_Boothill_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "The Hunt",
+        "element": "Physical"
     },
     {
         "id": "bronya",
         "name": "Bronya",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/0/0f/Character_Bronya_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Harmony",
+        "element": "Wind"
     },
     {
         "id": "castorice",
         "name": "Castorice",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/d/da/Character_Castorice_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Remembrance",
+        "element": "Quantum"
     },
     {
         "id": "cerydra",
         "name": "Cerydra",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c9/Character_Cerydra_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Unknown",
+        "element": "Unknown"
     },
     {
         "id": "cipher",
         "name": "Cipher",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/99/Character_Cipher_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Unknown",
+        "element": "Unknown"
     },
     {
         "id": "clara",
         "name": "Clara",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/a/a4/Character_Clara_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Destruction",
+        "element": "Physical"
     },
     {
         "id": "cyrene",
         "name": "Cyrene",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/99/Character_Cyrene_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Unknown",
+        "element": "Unknown"
     },
     {
         "id": "dan-heng",
         "name": "Dan Heng",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/1a/Character_Dan_Heng_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "The Hunt",
+        "element": "Wind"
     },
     {
         "id": "dan-heng-•-imbibitor-lunae",
         "name": "Dan Heng • Imbibitor Lunae",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/2a/Character_Dan_Heng_%E2%80%A2_Imbibitor_Lunae_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Destruction",
+        "element": "Imaginary"
     },
     {
         "id": "dan-heng-•-permansor-terrae",
         "name": "Dan Heng • Permansor Terrae",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/f/fc/Character_Dan_Heng_%E2%80%A2_Permansor_Terrae_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Unknown",
+        "element": "Unknown"
     },
     {
         "id": "dr-ratio",
         "name": "Dr. Ratio",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/47/Character_Dr._Ratio_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "The Hunt",
+        "element": "Imaginary"
     },
     {
         "id": "evernight",
         "name": "Evernight",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/b/b7/Character_Evernight_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Unknown",
+        "element": "Unknown"
     },
     {
         "id": "feixiao",
         "name": "Feixiao",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/75/Character_Feixiao_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "The Hunt",
+        "element": "Wind"
     },
     {
         "id": "firefly",
         "name": "Firefly",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/9e/Character_Firefly_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Destruction",
+        "element": "Fire"
     },
     {
         "id": "fu-xuan",
         "name": "Fu Xuan",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/1a/Character_Fu_Xuan_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Preservation",
+        "element": "Quantum"
     },
     {
         "id": "fugue",
         "name": "Fugue",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c0/Character_Fugue_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Nihility",
+        "element": "Fire"
     },
     {
         "id": "gallagher",
         "name": "Gallagher",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/12/Character_Gallagher_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Abundance",
+        "element": "Fire"
     },
     {
         "id": "gepard",
         "name": "Gepard",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/75/Character_Gepard_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Preservation",
+        "element": "Ice"
     },
     {
         "id": "guinaifen",
         "name": "Guinaifen",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/98/Character_Guinaifen_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Nihility",
+        "element": "Fire"
     },
     {
         "id": "hanya",
         "name": "Hanya",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/99/Character_Hanya_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Harmony",
+        "element": "Physical"
     },
     {
         "id": "herta",
         "name": "Herta",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/b/bf/Character_Herta_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Erudition",
+        "element": "Ice"
     },
     {
         "id": "himeko",
         "name": "Himeko",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/0/00/Character_Himeko_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Erudition",
+        "element": "Fire"
     },
     {
         "id": "hook",
         "name": "Hook",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/d/d5/Character_Hook_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Destruction",
+        "element": "Fire"
     },
     {
         "id": "huohuo",
         "name": "Huohuo",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/6/68/Character_Huohuo_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Abundance",
+        "element": "Wind"
     },
     {
         "id": "hyacine",
         "name": "Hyacine",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c0/Character_Hyacine_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Unknown",
+        "element": "Unknown"
     },
     {
         "id": "hysilens",
         "name": "Hysilens",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/19/Character_Hysilens_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Unknown",
+        "element": "Unknown"
     },
     {
         "id": "jade",
         "name": "Jade",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/f/fd/Character_Jade_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Erudition",
+        "element": "Quantum"
     },
     {
         "id": "jiaoqiu",
         "name": "Jiaoqiu",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/48/Character_Jiaoqiu_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Nihility",
+        "element": "Fire"
     },
     {
         "id": "jing-yuan",
         "name": "Jing Yuan",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/8/88/Character_Jing_Yuan_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Erudition",
+        "element": "Lightning"
     },
     {
         "id": "jingliu",
         "name": "Jingliu",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/f/f9/Character_Jingliu_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Destruction",
+        "element": "Ice"
     },
     {
         "id": "kafka",
         "name": "Kafka",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/8/8c/Character_Kafka_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Nihility",
+        "element": "Lightning"
     },
     {
         "id": "lingsha",
         "name": "Lingsha",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/a/ab/Character_Lingsha_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Abundance",
+        "element": "Fire"
     },
     {
         "id": "luka",
         "name": "Luka",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c7/Character_Luka_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Nihility",
+        "element": "Physical"
     },
     {
         "id": "luocha",
         "name": "Luocha",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/20/Character_Luocha_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Abundance",
+        "element": "Imaginary"
     },
     {
         "id": "lynx",
         "name": "Lynx",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/6/6c/Character_Lynx_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Abundance",
+        "element": "Quantum"
     },
     {
         "id": "march-7th",
         "name": "March 7th",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/d/d3/Character_March_7th_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Preservation",
+        "element": "Ice"
     },
     {
         "id": "march-7th",
         "name": "March 7th",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/7b/Character_March_7th_%28The_Hunt%29_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "The Hunt",
+        "element": "Imaginary"
     },
     {
         "id": "misha",
         "name": "Misha",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/4d/Character_Misha_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Destruction",
+        "element": "Ice"
     },
     {
         "id": "moze",
         "name": "Moze",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/25/Character_Moze_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "The Hunt",
+        "element": "Lightning"
     },
     {
         "id": "mydei",
         "name": "Mydei",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/8/89/Character_Mydei_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Destruction",
+        "element": "Imaginary"
     },
     {
         "id": "natasha",
         "name": "Natasha",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/6/61/Character_Natasha_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Abundance",
+        "element": "Physical"
     },
     {
         "id": "pela",
         "name": "Pela",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c2/Character_Pela_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Nihility",
+        "element": "Ice"
     },
     {
         "id": "phainon",
         "name": "Phainon",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/e/ef/Character_Phainon_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Unknown",
+        "element": "Unknown"
     },
     {
         "id": "qingque",
         "name": "Qingque",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/2e/Character_Qingque_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Erudition",
+        "element": "Quantum"
     },
     {
         "id": "rappa",
         "name": "Rappa",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/8/84/Character_Rappa_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Erudition",
+        "element": "Imaginary"
     },
     {
         "id": "robin",
         "name": "Robin",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/72/Character_Robin_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Harmony",
+        "element": "Physical"
     },
     {
         "id": "ruan-mei",
         "name": "Ruan Mei",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/16/Character_Ruan_Mei_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Harmony",
+        "element": "Ice"
     },
     {
         "id": "saber",
         "name": "Saber",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/43/Character_Saber_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Unknown",
+        "element": "Unknown"
     },
     {
         "id": "sampo",
         "name": "Sampo",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/5/53/Character_Sampo_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Nihility",
+        "element": "Wind"
     },
     {
         "id": "seele",
         "name": "Seele",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/9a/Character_Seele_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "The Hunt",
+        "element": "Quantum"
     },
     {
         "id": "serval",
         "name": "Serval",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/7c/Character_Serval_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Erudition",
+        "element": "Lightning"
     },
     {
         "id": "silver-wolf",
         "name": "Silver Wolf",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/a/a3/Character_Silver_Wolf_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Nihility",
+        "element": "Quantum"
     },
     {
         "id": "sparkle",
         "name": "Sparkle",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/6/6b/Character_Sparkle_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Harmony",
+        "element": "Quantum"
     },
     {
         "id": "sunday",
         "name": "Sunday",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/3/38/Character_Sunday_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Harmony",
+        "element": "Imaginary"
     },
     {
         "id": "sushang",
         "name": "Sushang",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/97/Character_Sushang_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "The Hunt",
+        "element": "Physical"
     },
     {
         "id": "the-dahlia",
         "name": "The Dahlia",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/71/Character_The_Dahlia_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Unknown",
+        "element": "Unknown"
     },
     {
         "id": "the-herta",
         "name": "The Herta",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/3/39/Character_The_Herta_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Erudition",
+        "element": "Ice"
     },
     {
         "id": "tingyun",
         "name": "Tingyun",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/4f/Character_Tingyun_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Harmony",
+        "element": "Lightning"
     },
     {
         "id": "topaz-&-numby",
         "name": "Topaz & Numby",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/8/89/Character_Topaz_%26_Numby_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "The Hunt",
+        "element": "Fire"
     },
     {
         "id": "trailblazer",
         "name": "Trailblazer",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/8/89/Character_Trailblazer_%28Destruction%29_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Destruction",
+        "element": "Physical"
     },
     {
         "id": "trailblazer",
         "name": "Trailblazer",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c3/Character_Trailblazer_%28Preservation%29_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Preservation",
+        "element": "Fire"
     },
     {
         "id": "trailblazer",
         "name": "Trailblazer",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/f/fd/Character_Trailblazer_%28Harmony%29_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Harmony",
+        "element": "Imaginary"
     },
     {
         "id": "trailblazer",
         "name": "Trailblazer",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/43/Character_Trailblazer_%28Remembrance%29_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Remembrance",
+        "element": "Ice"
     },
     {
         "id": "tribbie",
         "name": "Tribbie",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/f/f3/Character_Tribbie_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Harmony",
+        "element": "Quantum"
     },
     {
         "id": "welt",
         "name": "Welt",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/11/Character_Welt_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Nihility",
+        "element": "Imaginary"
     },
     {
         "id": "xueyi",
         "name": "Xueyi",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/23/Character_Xueyi_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Destruction",
+        "element": "Quantum"
     },
     {
         "id": "yanqing",
         "name": "Yanqing",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/5/57/Character_Yanqing_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "The Hunt",
+        "element": "Ice"
     },
     {
         "id": "yukong",
         "name": "Yukong",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/3/32/Character_Yukong_Icon.png",
-        "rarity": 4
+        "rarity": 4,
+        "path": "Harmony",
+        "element": "Imaginary"
     },
     {
         "id": "yunli",
         "name": "Yunli",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/43/Character_Yunli_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Destruction",
+        "element": "Physical"
     },
     {
         "id": "yao-guang",
         "name": "Yao Guang",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/1e/Character_Yao_Guang_Icon.png",
-        "rarity": 5
+        "rarity": 5,
+        "path": "Elation",
+        "element": "Physical"
     }
 ]
 
 # Crear diccionarios para búsqueda rápida
 CHARACTER_ICON_MAP = {}
+CHARACTER_INFO_MAP = {}
 for char in CHARACTER_ICONS:
     normalized_name = char['name'].lower().strip()
     CHARACTER_ICON_MAP[normalized_name] = char['image']
+    CHARACTER_INFO_MAP[normalized_name] = {
+        'path': char['path'],
+        'element': char['element'],
+        'rarity': char['rarity']
+    }
     CHARACTER_ICON_MAP[char['id'].lower()] = char['image']
+    CHARACTER_INFO_MAP[char['id'].lower()] = {
+        'path': char['path'],
+        'element': char['element'],
+        'rarity': char['rarity']
+    }
     simple_name = re.sub(r'[^a-z0-9]', '', normalized_name)
     CHARACTER_ICON_MAP[simple_name] = char['image']
+    CHARACTER_INFO_MAP[simple_name] = {
+        'path': char['path'],
+        'element': char['element'],
+        'rarity': char['rarity']
+    }
 
 DEFAULT_IMAGE = "https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png"
 
-def get_character_icon(character_name):
-    """Obtiene el ícono de un personaje por su nombre"""
+def get_character_info(character_name):
+    """Obtiene toda la información de un personaje por su nombre"""
     if not character_name:
-        return DEFAULT_IMAGE
+        return {
+            'image': DEFAULT_IMAGE,
+            'path': 'Unknown',
+            'element': 'Unknown',
+            'rarity': 4
+        }
     
     search_name = character_name.lower().strip()
     
-    if search_name in CHARACTER_ICON_MAP:
-        logger.info(f"✅ Ícono encontrado para {character_name}")
-        return CHARACTER_ICON_MAP[search_name]
+    # Búsqueda exacta
+    if search_name in CHARACTER_INFO_MAP:
+        info = CHARACTER_INFO_MAP[search_name]
+        logger.info(f"✅ Información encontrada para {character_name}")
+        return {
+            'image': CHARACTER_ICON_MAP[search_name],
+            'path': info['path'],
+            'element': info['element'],
+            'rarity': info['rarity']
+        }
     
-    for key, url in CHARACTER_ICON_MAP.items():
+    # Búsqueda por coincidencia parcial
+    for key, info in CHARACTER_INFO_MAP.items():
         if search_name in key or key in search_name:
-            logger.info(f"✅ Ícono encontrado (coincidencia parcial) para {character_name}: {key}")
-            return url
+            logger.info(f"✅ Información encontrada (coincidencia parcial) para {character_name}")
+            return {
+                'image': CHARACTER_ICON_MAP[key],
+                'path': info['path'],
+                'element': info['element'],
+                'rarity': info['rarity']
+            }
     
+    # Búsqueda por similitud
     try:
-        matches = difflib.get_close_matches(search_name, CHARACTER_ICON_MAP.keys(), n=1, cutoff=0.6)
+        matches = difflib.get_close_matches(search_name, CHARACTER_INFO_MAP.keys(), n=1, cutoff=0.6)
         if matches:
-            logger.info(f"✅ Ícono encontrado (similitud) para {character_name}: {matches[0]}")
-            return CHARACTER_ICON_MAP[matches[0]]
+            logger.info(f"✅ Información encontrada (similitud) para {character_name}")
+            return {
+                'image': CHARACTER_ICON_MAP[matches[0]],
+                'path': CHARACTER_INFO_MAP[matches[0]]['path'],
+                'element': CHARACTER_INFO_MAP[matches[0]]['element'],
+                'rarity': CHARACTER_INFO_MAP[matches[0]]['rarity']
+            }
     except:
         pass
     
-    logger.warning(f"⚠️ No se encontró ícono para {character_name}, usando imagen por defecto")
-    return DEFAULT_IMAGE
+    logger.warning(f"⚠️ No se encontró información para {character_name}, usando valores por defecto")
+    return {
+        'image': DEFAULT_IMAGE,
+        'path': 'Unknown',
+        'element': 'Unknown',
+        'rarity': 4
+    }
 
 # ============================================
 # CLASE BANNER
@@ -625,7 +832,7 @@ class ForumManager:
         keys_to_delete = [k for k in self.posts.keys() if k.startswith(f"{channel_id}_")]
         for key in keys_to_delete:
             del self.posts[key]
-        self.save_posts()
+            self.save_posts()
 
 # ============================================
 # CLASE BANNER SCRAPER
@@ -648,12 +855,6 @@ class BannerScraper:
             'Deadly Dancer', 'Evil March Strikes Back', 'Full of Malice',
             'Seer Strategist', 'Excalibur!', 'Bone of My Sword'
         ]
-        
-        self.element_emojis = {
-            'Physical': '💪', 'Fire': '🔥', 'Ice': '❄️',
-            'Lightning': '⚡', 'Wind': '💨', 'Quantum': '⚛️',
-            'Imaginary': '✨'
-        }
     
     def parse_date_from_duration(self, duration_text):
         if not duration_text:
@@ -715,23 +916,29 @@ class BannerScraper:
                 char_key = href.split('/')[-1]
                 name = char_key.replace('-', ' ').title()
             
-            element = "Unknown"
-            element_tag = card.find('span', class_='floating-element')
-            if element_tag:
-                element_img = element_tag.find('img')
-                if element_img and element_img.get('alt'):
-                    element = element_img.get('alt')
+            # Obtener toda la información del personaje de nuestra base de datos
+            char_info = get_character_info(name)
+            
+            # Intentar obtener elemento del HTML como respaldo
+            element = char_info['element']
+            if element == 'Unknown':
+                element_tag = card.find('span', class_='floating-element')
+                if element_tag:
+                    element_img = element_tag.find('img')
+                    if element_img and element_img.get('alt'):
+                        element = element_img.get('alt')
             
             card_html = str(card)
-            rarity = 5 if 'rarity-5' in card_html or 'rar-5' in card_html else 4
-            
-            image_url = get_character_icon(name)
+            rarity = char_info['rarity']
+            if rarity == 4 and ('rarity-5' in card_html or 'rar-5' in card_html):
+                rarity = 5
             
             return {
                 'name': name,
-                'image': image_url,
+                'image': char_info['image'],
                 'element': element,
-                'rarity': rarity
+                'rarity': rarity,
+                'path': char_info['path']
             }
         except Exception as e:
             logger.error(f"Error parseando personaje: {e}")
@@ -739,7 +946,8 @@ class BannerScraper:
                 'name': "Unknown",
                 'image': DEFAULT_IMAGE,
                 'element': "Unknown",
-                'rarity': 4
+                'rarity': 4,
+                'path': "Unknown"
             }
     
     def parse_light_cone(self, cone_item) -> dict:
@@ -905,15 +1113,35 @@ forum_manager = ForumManager()
 # ============================================
 # FUNCIONES AUXILIARES
 # ============================================
-def get_element_emoji(element: str) -> str:
-    elements = {
-        'Physical': '💪', 'Fire': '🔥', 'Ice': '❄️',
-        'Lightning': '⚡', 'Wind': '💨', 'Quantum': '⚛️',
-        'Imaginary': '✨', 'physical': '💪', 'fire': '🔥',
-        'ice': '❄️', 'lightning': '⚡', 'wind': '💨',
-        'quantum': '⚛️', 'imaginary': '✨'
+def get_path_emoji(path: str) -> str:
+    """Devuelve el emoji de la Vía"""
+    path_emojis = {
+        'Abundance': '🌿',
+        'Destruction': '💥',
+        'Erudition': '📚',
+        'Harmony': '🎵',
+        'Nihility': '🌑',
+        'Preservation': '🛡️',
+        'The Hunt': '🏹',
+        'Remembrance': '📖',
+        'Elation': '🎭',
+        'Unknown': '❓'
     }
-    return elements.get(element, elements.get(element.lower(), '🔮'))
+    return path_emojis.get(path, '❓')
+
+def get_element_emoji(element: str) -> str:
+    """Devuelve el emoji del elemento"""
+    element_emojis = {
+        'Physical': '💪',
+        'Fire': '🔥',
+        'Ice': '❄️',
+        'Lightning': '⚡',
+        'Wind': '💨',
+        'Quantum': '⚛️',
+        'Imaginary': '✨',
+        'Unknown': '❓'
+    }
+    return element_emojis.get(element, '❓')
 
 async def create_character_post(forum_channel, character, banner_info, status):
     """Crea una publicación en el foro para un personaje específico"""
@@ -923,28 +1151,23 @@ async def create_character_post(forum_channel, character, banner_info, status):
     # Título: nombre del personaje
     thread_name = f"{status_emoji} {character['name']}"
     
-    # Contenido: solo tiempo y duración
-    content = f"""**⏳ Tiempo restante:** {banner_info['time_remaining']}
-**📅 Duración:** {banner_info['duration_text'].replace('Event Duration', '')}"""
+    # Crear las etiquetas del foro (si el foro las soporta)
+    # En Discord, las etiquetas se pueden aplicar al crear el hilo
+    # Pero necesitamos los IDs de las etiquetas del servidor
     
-    # Crear la publicación con la imagen como banner
+    # Crear la publicación con la imagen como contenido
     thread = await forum_channel.create_thread(
         name=thread_name,
-        content=content,
+        content=character['image'],  # La imagen como contenido principal
         auto_archive_duration=10080
     )
     
     thread_obj = thread[0] if isinstance(thread, tuple) else thread
     
-    # Establecer la imagen del personaje como la imagen de la publicación
-    # Nota: Discord no permite establecer imagen de publicación directamente,
-    # pero podemos enviarla como mensaje inicial
-    try:
-        # Enviar la imagen como mensaje inicial
-        await thread_obj.send(character['image'])
-        logger.info(f"✅ Imagen enviada para {character['name']}")
-    except Exception as e:
-        logger.error(f"Error enviando imagen: {e}")
+    # Añadir la información del personaje como un mensaje adicional
+    info_text = f"{character['name']}\n{get_path_emoji(character['path'])} {character['path']}\n{get_element_emoji(character['element'])} {character['element']}"
+    
+    await thread_obj.send(info_text)
     
     logger.info(f"✅ Publicación creada para personaje: {character['name']}")
     
@@ -1039,27 +1262,16 @@ async def update_character_posts(channel_id, banners, now, status):
         # Crear o actualizar publicaciones
         for item in characters_with_banner:
             char = item['character']
-            banner_info = item['banner_info']
             
             char_id = re.sub(r'[^a-zA-Z0-9]', '', char['name'].lower())
             
             if char_id in existing_posts:
-                # Actualizar contenido del hilo
-                thread = existing_posts[char_id]
-                
-                new_content = f"""**⏳ Tiempo restante:** {banner_info['time_remaining']}
-**📅 Duración:** {banner_info['duration_text'].replace('Event Duration', '')}"""
-                
-                try:
-                    # Enviar mensaje de actualización
-                    await thread.send(f"🔄 **Actualización**\n{new_content}")
-                    logger.info(f"✅ Hilo actualizado: {char['name']}")
-                except Exception as e:
-                    logger.error(f"Error actualizando hilo {char['name']}: {e}")
+                # El hilo ya existe, no necesitamos actualizarlo
+                logger.info(f"⏩ Hilo ya existe para: {char['name']}")
             else:
                 # Crear nueva publicación
                 try:
-                    thread = await create_character_post(channel, char, banner_info, status)
+                    thread = await create_character_post(channel, char, item['banner_info'], status)
                     forum_manager.set_post_id(channel_id, char_id, thread.id)
                     logger.info(f"✅ Publicación creada: {char['name']}")
                 except Exception as e:
@@ -1067,7 +1279,7 @@ async def update_character_posts(channel_id, banners, now, status):
             
             await asyncio.sleep(1)
         
-        logger.info(f"✅ Foro {channel.name} actualizado con {len(characters_with_banner)} personajes")
+        logger.info(f"✅ Foro {channel.name} actualizado")
         
     except Exception as e:
         logger.error(f"❌ Error actualizando foro {channel.name}: {e}")
