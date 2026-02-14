@@ -10,6 +10,7 @@ import logging
 import sys
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
+import json
 
 # Configurar logging
 logging.basicConfig(
@@ -31,7 +32,8 @@ class Banner:
     def __init__(self, name: str, banner_type: str, time_remaining: str, 
                  featured_5star_char: list, featured_4star_char: list, 
                  featured_5star_cone: list, featured_4star_cone: list,
-                 duration_text: str = "", start_date=None, end_date=None):
+                 duration_text: str = "", start_date=None, end_date=None,
+                 banner_id: str = ""):
         self.name = name
         self.banner_type = banner_type
         self.time_remaining = time_remaining
@@ -42,6 +44,53 @@ class Banner:
         self.duration_text = duration_text
         self.start_date = start_date
         self.end_date = end_date
+        self.banner_id = banner_id
+
+# ============================================
+# CLASE PARA GESTIONAR MENSAJES
+# ============================================
+class MessageManager:
+    """Gestiona los mensajes del bot para editarlos en lugar de crear nuevos"""
+    
+    def __init__(self):
+        self.message_file = "banner_messages.json"
+        self.messages = self.load_messages()
+    
+    def load_messages(self):
+        """Carga los mensajes guardados"""
+        try:
+            if os.path.exists(self.message_file):
+                with open(self.message_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.error(f"Error cargando mensajes: {e}")
+        return {}
+    
+    def save_messages(self):
+        """Guarda los mensajes"""
+        try:
+            with open(self.message_file, 'w', encoding='utf-8') as f:
+                json.dump(self.messages, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"Error guardando mensajes: {e}")
+    
+    def get_message_id(self, channel_id, banner_name):
+        """Obtiene el ID del mensaje para un banner específico"""
+        key = f"{channel_id}_{banner_name}"
+        return self.messages.get(key)
+    
+    def set_message_id(self, channel_id, banner_name, message_id):
+        """Guarda el ID del mensaje para un banner específico"""
+        key = f"{channel_id}_{banner_name}"
+        self.messages[key] = message_id
+        self.save_messages()
+    
+    def clear_channel(self, channel_id):
+        """Limpia todos los mensajes de un canal"""
+        keys_to_delete = [k for k in self.messages.keys() if k.startswith(f"{channel_id}_")]
+        for key in keys_to_delete:
+            del self.messages[key]
+        self.save_messages()
 
 # ============================================
 # CLASE BANNER SCRAPER
@@ -335,9 +384,12 @@ class BannerScraper:
                     continue
                 
                 try:
-                    # Nombre del banner
+                    # Nombre del banner (usado como ID único)
                     name_tag = item.find('div', class_='event-name')
                     banner_name = name_tag.text.strip() if name_tag else "Banner sin nombre"
+                    
+                    # Crear un ID único para el banner (nombre normalizado)
+                    banner_id = re.sub(r'[^a-zA-Z0-9]', '', banner_name.lower())
                     
                     # Tiempo restante
                     time_tag = item.find('span', class_='time')
@@ -370,12 +422,14 @@ class BannerScraper:
                         featured_4star_cone=featured_4star_cone,
                         duration_text=duration_text,
                         start_date=start_date,
-                        end_date=end_date
+                        end_date=end_date,
+                        banner_id=banner_id
                     )
                     banners.append(banner)
                     
                     # Log detallado
                     logger.info(f"✅ Warp {warp_count}: {banner_name}")
+                    logger.info(f"   - ID: {banner_id}")
                     logger.info(f"   - Tipo: {banner_type}")
                     logger.info(f"   - Inicio: {start_date}")
                     logger.info(f"   - Fin: {end_date}")
@@ -397,9 +451,10 @@ class BannerScraper:
             return []
 
 # ============================================
-# INSTANCIA GLOBAL DEL SCRAPER
+# INSTANCIAS GLOBALES
 # ============================================
 scraper = BannerScraper()
+message_manager = MessageManager()
 
 # ============================================
 # FUNCIONES AUXILIARES
@@ -416,7 +471,7 @@ def get_element_emoji(element: str) -> str:
     return elements.get(element, elements.get(element.lower(), '🔮'))
 
 def create_banner_embed(banner: Banner, status: str = "actual") -> discord.Embed:
-    """Crea un embed precioso para un banner con imágenes de personajes y conos"""
+    """Crea un embed precioso para un banner con TODAS las imágenes posibles"""
     
     # Emoji según el tipo y estado
     type_emoji = {
@@ -497,25 +552,44 @@ def create_banner_embed(banner: Banner, status: str = "actual") -> discord.Embed
         if cones_text:
             embed.add_field(name="📿 **Conos de Luz 4★**", value=cones_text, inline=False)
     
-    # THUMBNAIL - Elegir la mejor imagen disponible
-    thumbnail_url = None
+    # IMÁGENES - Añadir todas las imágenes disponibles
+    image_urls = []
     
-    # Prioridad: 1. Personaje 5★, 2. Cono 5★, 3. Personaje 4★, 4. Cono 4★
-    if banner.featured_5star_char and len(banner.featured_5star_char) > 0:
-        thumbnail_url = banner.featured_5star_char[0]['image']
-    elif banner.featured_5star_cone and len(banner.featured_5star_cone) > 0:
-        thumbnail_url = banner.featured_5star_cone[0]['image']
-    elif banner.featured_4star_char and len(banner.featured_4star_char) > 0:
-        thumbnail_url = banner.featured_4star_char[0]['image']
-    elif banner.featured_4star_cone and len(banner.featured_4star_cone) > 0:
-        thumbnail_url = banner.featured_4star_cone[0]['image']
-    else:
-        thumbnail_url = "https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png"
+    # Recopilar todas las URLs de imágenes
+    for char in banner.featured_5star_char:
+        if char.get('image') and char['image'] not in image_urls:
+            image_urls.append(char['image'])
     
-    try:
-        embed.set_thumbnail(url=thumbnail_url)
-    except Exception as e:
-        logger.error(f"Error estableciendo thumbnail: {e}")
+    for char in banner.featured_4star_char:
+        if char.get('image') and char['image'] not in image_urls:
+            image_urls.append(char['image'])
+    
+    for cone in banner.featured_5star_cone:
+        if cone.get('image') and cone['image'] not in image_urls:
+            image_urls.append(cone['image'])
+    
+    for cone in banner.featured_4star_cone:
+        if cone.get('image') and cone['image'] not in image_urls:
+            image_urls.append(cone['image'])
+    
+    # Si hay imágenes, mostrar la primera como thumbnail y las siguientes como imágenes
+    if image_urls:
+        # Primera imagen como thumbnail
+        try:
+            embed.set_thumbnail(url=image_urls[0])
+        except Exception as e:
+            logger.error(f"Error estableciendo thumbnail: {e}")
+        
+        # Si hay más imágenes, añadirlas como fields
+        if len(image_urls) > 1:
+            for i, img_url in enumerate(image_urls[1:4]):  # Máximo 3 imágenes adicionales
+                try:
+                    embed.add_field(name="🖼️" if i == 0 else "​", value=f"[Ver imagen]({img_url})", inline=True)
+                except:
+                    pass
+    
+    # Si no hay imágenes, usar imagen por defecto
+    if not image_urls:
         embed.set_thumbnail(url="https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png")
     
     # Footer con estadísticas
@@ -531,7 +605,7 @@ def create_banner_embed(banner: Banner, status: str = "actual") -> discord.Embed
 # VARIABLES DE ENTORNO
 # ============================================
 logger.info("=" * 60)
-logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - DETECTOR POR FECHAS")
+logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - EDITOR DE MENSAJES")
 logger.info("=" * 60)
 
 TOKEN = os.environ.get('DISCORD_TOKEN')
@@ -587,22 +661,22 @@ async def on_ready():
 
 @tasks.loop(hours=24)
 async def daily_banners():
-    """Publica banners cada 24 horas"""
-    await publish_banners()
+    """Actualiza los banners cada 24 horas (editando mensajes existentes)"""
+    await update_banners()
 
 @daily_banners.before_loop
 async def before_daily_banners():
     """Espera a que el bot esté listo"""
     await bot.wait_until_ready()
 
-async def publish_banners():
-    """Publica banners en los canales configurados según su estado"""
+async def update_banners():
+    """Actualiza los banners en los canales (editando en lugar de crear nuevos)"""
     
     # Obtener todos los banners
     all_banners = scraper.get_banners()
     
     if not all_banners:
-        logger.warning("No se encontraron banners para publicar")
+        logger.warning("No se encontraron banners para actualizar")
         return
     
     # Clasificar banners por fecha
@@ -622,50 +696,88 @@ async def publish_banners():
     
     logger.info(f"Clasificación: {len(banners_actuales)} actuales, {len(banners_proximos)} próximos")
     
-    # Enviar a canal de actuales
-    if TARGET_CHANNEL_ACTUAL and banners_actuales:
-        channel = bot.get_channel(TARGET_CHANNEL_ACTUAL)
-        if channel:
-            await send_banners_to_channel(channel, banners_actuales, "actual")
+    # Actualizar canal de actuales
+    if TARGET_CHANNEL_ACTUAL:
+        await update_channel_banners(TARGET_CHANNEL_ACTUAL, banners_actuales, "actual")
     
-    # Enviar a canal de próximos
-    if TARGET_CHANNEL_PROXIMO and banners_proximos:
-        channel = bot.get_channel(TARGET_CHANNEL_PROXIMO)
-        if channel:
-            await send_banners_to_channel(channel, banners_proximos, "próximo")
+    # Actualizar canal de próximos
+    if TARGET_CHANNEL_PROXIMO:
+        await update_channel_banners(TARGET_CHANNEL_PROXIMO, banners_proximos, "proximo")
 
-async def send_banners_to_channel(channel, banners, status):
-    """Envía una lista de banners a un canal específico"""
+async def update_channel_banners(channel_id, banners, status):
+    """Actualiza los banners de un canal específico (editando mensajes)"""
     
-    loading_msg = await channel.send(f"🔮 **Publicando warps {status}es...**")
+    channel = bot.get_channel(channel_id)
+    if not channel:
+        logger.error(f"❌ No se encontró el canal {channel_id}")
+        return
     
     try:
+        # Enviar mensaje de carga
+        loading_msg = await channel.send(f"🔄 **Actualizando warps {status}es...**")
+        
+        # Obtener mensajes existentes en el canal
+        existing_messages = []
+        async for message in channel.history(limit=50):
+            if message.author == bot.user and message.embeds:
+                existing_messages.append(message)
+        
+        logger.info(f"Canal {channel.name}: {len(existing_messages)} mensajes existentes")
+        
+        # Mapear mensajes existentes por ID de banner
+        existing_by_id = {}
+        for msg in existing_messages:
+            if msg.embeds and msg.embeds[0].title:
+                # Intentar extraer ID del banner del título o footer
+                for banner in banners:
+                    if banner.name in msg.embeds[0].title:
+                        existing_by_id[banner.banner_id] = msg
+                        break
+        
+        # Actualizar o crear mensajes para cada banner
+        for banner in banners:
+            embed = create_banner_embed(banner, status)
+            
+            if banner.banner_id in existing_by_id:
+                # Editar mensaje existente
+                msg = existing_by_id[banner.banner_id]
+                try:
+                    await msg.edit(embed=embed)
+                    logger.info(f"✅ Mensaje editado: {banner.name}")
+                except Exception as e:
+                    logger.error(f"Error editando mensaje {banner.name}: {e}")
+            else:
+                # Crear nuevo mensaje
+                try:
+                    new_msg = await channel.send(embed=embed)
+                    message_manager.set_message_id(channel_id, banner.banner_id, new_msg.id)
+                    logger.info(f"✅ Mensaje creado: {banner.name}")
+                except Exception as e:
+                    logger.error(f"Error creando mensaje {banner.name}: {e}")
+            
+            await asyncio.sleep(1)  # Pausa para evitar rate limits
+        
+        # Eliminar mensajes de banners que ya no existen
+        current_ids = {b.banner_id for b in banners}
+        for msg in existing_messages:
+            msg_id = None
+            for banner_id, existing_msg in existing_by_id.items():
+                if existing_msg.id == msg.id and banner_id not in current_ids:
+                    try:
+                        await msg.delete()
+                        logger.info(f"🗑️ Mensaje eliminado (banner ya no existe)")
+                    except Exception as e:
+                        logger.error(f"Error eliminando mensaje: {e}")
+                    break
+        
+        # Limpiar mensaje de carga
         await loading_msg.delete()
         
-        # Enviar cada banner
-        banners_enviados = 0
-        for banner in banners:
-            try:
-                embed = create_banner_embed(banner, status)
-                await channel.send(embed=embed)
-                banners_enviados += 1
-                await asyncio.sleep(1.5)  # Pausa para evitar rate limits
-            except Exception as e:
-                logger.error(f"Error enviando banner {banner.name}: {e}")
-                continue
-        
         # Mensaje de resumen
-        if banners_enviados > 0:
-            status_text = "activos" if status == "actual" else "próximos"
-            await channel.send(f"✅ **{banners_enviados} warps {status_text} publicados.**")
-        else:
-            await channel.send(f"❌ **No se pudo enviar ningún warp {status}.**")
-        
-        logger.info(f"✅ {banners_enviados} warps {status} enviados a {channel.name}")
+        await channel.send(f"✅ **{len(banners)} warps {status}es actualizados.**")
         
     except Exception as e:
-        logger.error(f"❌ Error enviando warps a {channel.name}: {e}")
-        await loading_msg.edit(content=f"❌ **Error:** {str(e)[:200]}")
+        logger.error(f"❌ Error actualizando canal {channel.name}: {e}")
 
 @bot.command(name='banners', aliases=['warps', 'warp'])
 async def banners_command(ctx):
@@ -763,7 +875,39 @@ async def banner_info(ctx, *, banner_name: str = None):
 async def refresh_banners(ctx):
     """Fuerza actualización (solo admins)"""
     await ctx.send("🔄 **Forzando actualización de warps...**")
-    await publish_banners()
+    await update_banners()
+
+@bot.command(name='reset_channel')
+@commands.has_permissions(administrator=True)
+async def reset_channel(ctx, channel_type: str = None):
+    """Resetea los mensajes de un canal (solo admins)"""
+    if not channel_type or channel_type not in ['actual', 'proximo']:
+        await ctx.send("❌ **Usa:** `!reset_channel actual` o `!reset_channel proximo`")
+        return
+    
+    channel_id = TARGET_CHANNEL_ACTUAL if channel_type == 'actual' else TARGET_CHANNEL_PROXIMO
+    if not channel_id:
+        await ctx.send(f"❌ **Canal {channel_type} no configurado**")
+        return
+    
+    channel = bot.get_channel(channel_id)
+    if not channel:
+        await ctx.send(f"❌ **No se encontró el canal**")
+        return
+    
+    # Limpiar mensajes del canal
+    async for message in channel.history(limit=100):
+        if message.author == bot.user:
+            try:
+                await message.delete()
+                await asyncio.sleep(0.5)
+            except:
+                pass
+    
+    # Limpiar registro de mensajes
+    message_manager.clear_channel(channel_id)
+    
+    await ctx.send(f"✅ **Canal {channel_type} reseteado. Los mensajes se recrearán en la próxima actualización.**")
 
 @bot.command(name='stats')
 async def banner_stats(ctx):
