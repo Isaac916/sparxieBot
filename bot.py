@@ -119,6 +119,12 @@ class BannerScraper:
         # Imagen por defecto para fallback
         self.default_image = "https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png"
         
+        # Lista de warps reales conocidos (para filtrar)
+        self.real_warps = [
+            'Deadly Dancer', 'Evil March Strikes Back', 'Full of Malice',
+            'Seer Strategist', 'Excalibur!', 'Bone of My Sword'
+        ]
+        
         # Mapeo de elementos a emojis
         self.element_emojis = {
             'Physical': '💪', 'Fire': '🔥', 'Ice': '❄️',
@@ -126,85 +132,79 @@ class BannerScraper:
             'Imaginary': '✨'
         }
     
-   def extract_image_url(self, img_tag) -> str:
-    """Extrae la URL completa de la imagen de manera más robusta"""
-    if not img_tag:
-        return None
-    
-    url = None
-    
-    try:
-        # Método 1: Buscar en picture > source (prioridad máxima)
-        picture = img_tag.find_parent('picture')
-        if picture:
-            source = picture.find('source')
-            if source and source.get('srcset'):
-                srcset = source.get('srcset')
-                # Tomar la URL de mayor resolución
-                urls = srcset.split(',')
-                if urls:
-                    last_url = urls[-1].strip()
-                    if ' ' in last_url:
-                        last_url = last_url.split(' ')[0]
-                    
-                    if last_url.startswith('http'):
-                        url = last_url
-                    elif last_url.startswith('/'):
-                        url = f"https://www.prydwen.gg{last_url}"
-                    elif last_url.startswith('static'):
-                        url = f"https://www.prydwen.gg/{last_url}"
+    def extract_image_url(self, img_tag) -> str:
+        """Extrae la URL completa de la imagen de manera más robusta"""
+        if not img_tag:
+            return self.default_image
         
-        # Método 2: srcset del propio img
-        if not url:
-            srcset = img_tag.get('srcset', '')
-            if srcset:
-                urls = srcset.split(',')
-                if urls:
-                    last_url = urls[-1].strip()
-                    if ' ' in last_url:
-                        last_url = last_url.split(' ')[0]
-                    
-                    if last_url.startswith('http'):
-                        url = last_url
-                    elif last_url.startswith('/'):
-                        url = f"https://www.prydwen.gg{last_url}"
-                    elif last_url.startswith('static'):
-                        url = f"https://www.prydwen.gg/{last_url}"
+        url = None
         
-        # Método 3: src
-        if not url:
-            src = img_tag.get('src', '')
-            if src and not src.startswith('data:'):
-                if src.startswith('http'):
-                    url = src
-                elif src.startswith('/'):
-                    url = f"https://www.prydwen.gg{src}"
-                elif src.startswith('static'):
-                    url = f"https://www.prydwen.gg/{src}"
-        
-        # Limpiar la URL y asegurar que sea válida
-        if url:
-            # Eliminar parámetros de query y fragmentos
-            url = url.split('?')[0].split('#')[0]
+        try:
+            # Método 1: Buscar en picture > source (prioridad máxima)
+            picture = img_tag.find_parent('picture')
+            if picture:
+                source = picture.find('source')
+                if source and source.get('srcset'):
+                    srcset = source.get('srcset')
+                    # Tomar la URL de mayor resolución
+                    urls = srcset.split(',')
+                    if urls:
+                        last_url = urls[-1].strip()
+                        if ' ' in last_url:
+                            last_url = last_url.split(' ')[0]
+                        
+                        if last_url.startswith('http'):
+                            url = last_url
+                        elif last_url.startswith('/'):
+                            url = f"https://www.prydwen.gg{last_url}"
+                        elif last_url.startswith('static'):
+                            url = f"https://www.prydwen.gg/{last_url}"
             
-            # Asegurar que termina en extensión de imagen válida
-            if not any(url.endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.webp', '.gif']):
-                # Si no tiene extensión, intentar añadir .png
-                if not url.endswith('/'):
-                    url = url + '.png'
+            # Método 2: srcset del propio img
+            if not url:
+                srcset = img_tag.get('srcset', '')
+                if srcset:
+                    urls = srcset.split(',')
+                    if urls:
+                        last_url = urls[-1].strip()
+                        if ' ' in last_url:
+                            last_url = last_url.split(' ')[0]
+                        
+                        if last_url.startswith('http'):
+                            url = last_url
+                        elif last_url.startswith('/'):
+                            url = f"https://www.prydwen.gg{last_url}"
+                        elif last_url.startswith('static'):
+                            url = f"https://www.prydwen.gg/{last_url}"
             
-            # Verificar que sea una URL HTTP/HTTPS válida
-            if url.startswith(('http://', 'https://')):
-                return url
-            elif url.startswith('/'):
-                return f"https://www.prydwen.gg{url}"
-            else:
-                return f"https://www.prydwen.gg/{url}"
+            # Método 3: src
+            if not url:
+                src = img_tag.get('src', '')
+                if src and not src.startswith('data:'):
+                    if src.startswith('http'):
+                        url = src
+                    elif src.startswith('/'):
+                        url = f"https://www.prydwen.gg{src}"
+                    elif src.startswith('static'):
+                        url = f"https://www.prydwen.gg/{src}"
+            
+            # Limpiar la URL y asegurar que sea válida
+            if url:
+                # Eliminar parámetros de query y fragmentos
+                url = url.split('?')[0].split('#')[0]
+                
+                # Verificar que sea una URL HTTP/HTTPS válida
+                if url.startswith(('http://', 'https://')):
+                    return url
+                elif url.startswith('/'):
+                    return f"https://www.prydwen.gg{url}"
+                else:
+                    return f"https://www.prydwen.gg/{url}"
+            
+        except Exception as e:
+            logger.error(f"Error extrayendo URL: {e}")
         
-    except Exception as e:
-        logger.error(f"Error extrayendo URL: {e}")
-    
-    return self.default_image
+        return self.default_image
     
     def parse_date_from_duration(self, duration_text):
         """Parsea las fechas de inicio y fin del texto de duración"""
@@ -237,6 +237,14 @@ class BannerScraper:
         """Determina si un accordion-item es un WARP real basado en su estructura interna"""
         html = str(item)
         
+        # Verificar por nombre conocido primero
+        name_tag = item.find('div', class_='event-name')
+        if name_tag:
+            banner_name = name_tag.text.strip()
+            if any(warp in banner_name for warp in self.real_warps):
+                return True
+        
+        # Si no es conocido, verificar por estructura
         has_featured_p = 'class="featured"' in html
         has_rarity_spans = 'hsr-rar' in html and ('5★' in html or '4★' in html)
         has_featured_chars = 'featured-characters' in html
@@ -277,9 +285,6 @@ class BannerScraper:
             card_html = str(card)
             rarity = 5 if 'rarity-5' in card_html or 'rar-5' in card_html else 4
             
-            if not image_url:
-                image_url = self.default_image
-            
             return {
                 'name': name,
                 'image': image_url,
@@ -306,9 +311,6 @@ class BannerScraper:
             
             cone_html = str(cone_item)
             rarity = 5 if 'rarity-5' in cone_html or 'rar-5' in cone_html else 4
-            
-            if not image_url:
-                image_url = self.default_image
             
             return {
                 'name': name,
@@ -406,6 +408,11 @@ class BannerScraper:
                 try:
                     name_tag = item.find('div', class_='event-name')
                     banner_name = name_tag.text.strip() if name_tag else "Banner sin nombre"
+                    
+                    # Filtrar solo warps reales
+                    if not any(warp in banner_name for warp in self.real_warps):
+                        skipped_count += 1
+                        continue
                     
                     banner_id = re.sub(r'[^a-zA-Z0-9]', '', banner_name.lower())
                     
@@ -876,7 +883,7 @@ async def reset_forum(ctx, channel_type: str = None):
         except:
             pass
     
-    async for thread in channel.threads:
+    for thread in channel.threads:
         try:
             await thread.edit(archived=True, locked=True)
             await asyncio.sleep(0.5)
