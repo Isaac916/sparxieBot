@@ -133,99 +133,110 @@ class BannerScraper:
         }
     
     def extract_image_url(self, img_tag) -> str:
-    """Extrae la URL completa de la imagen de manera más robusta"""
-    if not img_tag:
-        logger.debug("No img_tag found")
-        return self.default_image
-    
-    url = None
-    
-    try:
-        # Método 1: Buscar en picture > source (la imagen real está aquí)
-        picture = img_tag.find_parent('picture')
-        if picture:
-            source = picture.find('source')
-            if source and source.get('srcset'):
-                srcset = source.get('srcset')
-                logger.debug(f"Found picture source srcset: {srcset[:200]}...")
-                
-                # Tomar la URL de mayor resolución (la última)
-                urls = srcset.split(',')
-                if urls:
-                    # La última URL suele ser la de mayor resolución
-                    last_url = urls[-1].strip()
-                    
-                    # Extraer solo la URL (antes del espacio si hay)
-                    if ' ' in last_url:
-                        last_url = last_url.split(' ')[0]
-                    
-                    # Construir URL completa
-                    if last_url.startswith('http'):
-                        url = last_url
-                    elif last_url.startswith('/'):
-                        url = f"https://www.prydwen.gg{last_url}"
-                    elif last_url.startswith('static'):
-                        url = f"https://www.prydwen.gg/{last_url}"
-                    
-                    if url:
-                        logger.debug(f"URL from picture source: {url}")
+        """Extrae la URL completa de la imagen de manera más robusta"""
+        if not img_tag:
+            logger.debug("No img_tag found")
+            return self.default_image
         
-        # Método 2: Si no funciona, buscar en el img dentro de picture
-        if not url and picture:
-            img_in_picture = picture.find('img')
-            if img_in_picture:
-                # Intentar con srcset del img
-                srcset = img_in_picture.get('srcset', '')
-                if srcset:
+        url = None
+        
+        try:
+            # Método 1: Buscar en picture > source (la imagen real está aquí)
+            picture = img_tag.find_parent('picture')
+            if picture:
+                source = picture.find('source')
+                if source and source.get('srcset'):
+                    srcset = source.get('srcset')
+                    logger.debug(f"Found picture source srcset: {srcset[:200]}...")
+                    
+                    # Tomar la URL de mayor resolución (la última)
                     urls = srcset.split(',')
                     if urls:
+                        # La última URL suele ser la de mayor resolución
                         last_url = urls[-1].strip()
+                        
+                        # Extraer solo la URL (antes del espacio si hay)
                         if ' ' in last_url:
                             last_url = last_url.split(' ')[0]
                         
+                        # Construir URL completa
                         if last_url.startswith('http'):
                             url = last_url
                         elif last_url.startswith('/'):
                             url = f"https://www.prydwen.gg{last_url}"
                         elif last_url.startswith('static'):
                             url = f"https://www.prydwen.gg/{last_url}"
-        
-        # Método 3: src del img como último recurso
-        if not url:
-            src = img_tag.get('src', '')
-            if src and not src.startswith('data:'):
-                if src.startswith('http'):
-                    url = src
-                elif src.startswith('/'):
-                    url = f"https://www.prydwen.gg{src}"
-                elif src.startswith('static'):
-                    url = f"https://www.prydwen.gg/{src}"
-        
-        # Limpiar y validar la URL
-        if url:
-            # Eliminar parámetros de query y fragmentos
-            url = url.split('?')[0].split('#')[0]
+                        
+                        if url:
+                            logger.debug(f"URL from picture source: {url}")
             
-            # Asegurar que la URL es completa
-            if url.startswith(('http://', 'https://')):
-                logger.info(f"✅ Imagen encontrada: {url}")
-                return url
-            elif url.startswith('/'):
-                full_url = f"https://www.prydwen.gg{url}"
-                logger.info(f"✅ Imagen encontrada (con dominio): {full_url}")
-                return full_url
-            else:
-                full_url = f"https://www.prydwen.gg/{url}"
-                logger.info(f"✅ Imagen encontrada (con dominio): {full_url}")
-                return full_url
+            # Método 2: Si no funciona, buscar en el img dentro de picture
+            if not url and picture:
+                img_in_picture = picture.find('img')
+                if img_in_picture:
+                    # Intentar con srcset del img
+                    srcset = img_in_picture.get('srcset', '')
+                    if srcset:
+                        urls = srcset.split(',')
+                        if urls:
+                            last_url = urls[-1].strip()
+                            if ' ' in last_url:
+                                last_url = last_url.split(' ')[0]
+                            
+                            if last_url.startswith('http'):
+                                url = last_url
+                            elif last_url.startswith('/'):
+                                url = f"https://www.prydwen.gg{last_url}"
+                            elif last_url.startswith('static'):
+                                url = f"https://www.prydwen.gg/{last_url}"
+                    
+                    # Si no hay srcset, intentar con src
+                    if not url:
+                        src = img_in_picture.get('src', '')
+                        if src and not src.startswith('data:'):
+                            if src.startswith('http'):
+                                url = src
+                            elif src.startswith('/'):
+                                url = f"https://www.prydwen.gg{src}"
+                            elif src.startswith('static'):
+                                url = f"https://www.prydwen.gg/{src}"
+            
+            # Método 3: src del img original como último recurso
+            if not url:
+                src = img_tag.get('src', '')
+                if src and not src.startswith('data:'):
+                    if src.startswith('http'):
+                        url = src
+                    elif src.startswith('/'):
+                        url = f"https://www.prydwen.gg{src}"
+                    elif src.startswith('static'):
+                        url = f"https://www.prydwen.gg/{src}"
+            
+            # Limpiar y validar la URL
+            if url:
+                # Eliminar parámetros de query y fragmentos
+                url = url.split('?')[0].split('#')[0]
+                
+                # Asegurar que la URL es completa
+                if url.startswith(('http://', 'https://')):
+                    logger.info(f"✅ Imagen encontrada: {url}")
+                    return url
+                elif url.startswith('/'):
+                    full_url = f"https://www.prydwen.gg{url}"
+                    logger.info(f"✅ Imagen encontrada (con dominio): {full_url}")
+                    return full_url
+                else:
+                    full_url = f"https://www.prydwen.gg/{url}"
+                    logger.info(f"✅ Imagen encontrada (con dominio): {full_url}")
+                    return full_url
+            
+            logger.warning("No se encontró URL de imagen válida")
+            
+        except Exception as e:
+            logger.error(f"Error extrayendo URL: {e}")
         
-        logger.warning("No se encontró URL de imagen válida")
-        
-    except Exception as e:
-        logger.error(f"Error extrayendo URL: {e}")
-    
-    logger.info(f"⚠️ Usando imagen por defecto: {self.default_image}")
-    return self.default_image
+        logger.info(f"⚠️ Usando imagen por defecto: {self.default_image}")
+        return self.default_image
     
     def parse_date_from_duration(self, duration_text):
         """Parsea las fechas de inicio y fin del texto de duración"""
@@ -611,38 +622,38 @@ async def create_forum_post(forum_channel, banner, status):
     
     # Enviar imágenes con un mensaje más vistoso
     if all_images:
-    await thread_obj.send("## 🖼️ **Galería de Imágenes**")
-    
-    # Enviar cada imagen individualmente para mejor visualización
-    for i, img_url in enumerate(all_images[:10], 1):
-        try:
-            logger.info(f"Enviando imagen {i}: {img_url}")
-            
-            # Verificar que la URL es accesible (opcional)
+        await thread_obj.send("## 🖼️ **Galería de Imágenes**")
+        
+        # Enviar cada imagen individualmente para mejor visualización
+        for i, img_url in enumerate(all_images[:10], 1):
             try:
-                response = requests.head(img_url, timeout=5)
-                if response.status_code == 200:
-                    logger.info(f"✅ URL {i} es accesible")
-                else:
-                    logger.warning(f"⚠️ URL {i} devuelve código {response.status_code}")
-            except:
-                logger.warning(f"⚠️ No se pudo verificar URL {i}")
-            
-            # Enviar la imagen directamente (Discord la mostrará)
-            await thread_obj.send(img_url)
-            logger.info(f"✅ Imagen {i} enviada correctamente")
-            await asyncio.sleep(0.5)
-            
-        except Exception as e:
-            logger.error(f"❌ Error enviando imagen {img_url}: {e}")
-            # Si falla, intentar con embed
-            try:
-                embed = discord.Embed(title=f"Imagen {i}")
-                embed.set_image(url=img_url)
-                await thread_obj.send(embed=embed)
-                logger.info(f"✅ Imagen {i} enviada como embed")
-            except:
-                logger.error(f"❌ No se pudo enviar la URL {img_url}")
+                logger.info(f"Enviando imagen {i}: {img_url}")
+                
+                # Verificar que la URL es accesible (opcional)
+                try:
+                    response = requests.head(img_url, timeout=5)
+                    if response.status_code == 200:
+                        logger.info(f"✅ URL {i} es accesible")
+                    else:
+                        logger.warning(f"⚠️ URL {i} devuelve código {response.status_code}")
+                except:
+                    logger.warning(f"⚠️ No se pudo verificar URL {i}")
+                
+                # Enviar la imagen directamente (Discord la mostrará)
+                await thread_obj.send(img_url)
+                logger.info(f"✅ Imagen {i} enviada correctamente")
+                await asyncio.sleep(0.5)
+                
+            except Exception as e:
+                logger.error(f"❌ Error enviando imagen {img_url}: {e}")
+                # Si falla, intentar con embed
+                try:
+                    embed = discord.Embed(title=f"Imagen {i}")
+                    embed.set_image(url=img_url)
+                    await thread_obj.send(embed=embed)
+                    logger.info(f"✅ Imagen {i} enviada como embed")
+                except:
+                    logger.error(f"❌ No se pudo enviar la URL {img_url}")
     else:
         logger.warning("⚠️ No hay imágenes para enviar")
         await thread_obj.send("📸 *No hay imágenes disponibles para este banner*")
