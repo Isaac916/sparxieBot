@@ -29,7 +29,7 @@ class Banner:
     def __init__(self, name: str, banner_type: str, time_remaining: str, 
                  featured_5star_char: list, featured_4star_char: list, 
                  featured_5star_cone: list, featured_4star_cone: list,
-                 duration_text: str = ""):
+                 duration_text: str = "", banner_class: str = ""):
         self.name = name
         self.banner_type = banner_type
         self.time_remaining = time_remaining
@@ -38,12 +38,13 @@ class Banner:
         self.featured_5star_cone = featured_5star_cone if featured_5star_cone else []
         self.featured_4star_cone = featured_4star_cone if featured_4star_cone else []
         self.duration_text = duration_text
+        self.banner_class = banner_class
 
 # ============================================
 # CLASE BANNER SCRAPER
 # ============================================
 class BannerScraper:
-    """Clase para hacer scraping de TODOS los banners de warps en Prydwen"""
+    """Clase para hacer scraping de los banners de warps en Prydwen"""
     
     def __init__(self):
         self.url = "https://www.prydwen.gg/star-rail/"
@@ -56,6 +57,9 @@ class BannerScraper:
         self.session.headers.update(self.headers)
         # Imagen por defecto para fallback
         self.default_image = "https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png"
+        
+        # Clases que identifican warps reales (basado en el HTML)
+        self.warp_classes = ['swan', 'ever', 'hys', 'yao', 'saber', 'archer']
         
         # Mapeo de elementos a emojis
         self.element_emojis = {
@@ -112,32 +116,37 @@ class BannerScraper:
         return None
     
     def is_warp_banner(self, item) -> bool:
-        """Determina si un accordion-item es un WARP (banner de personajes/conos)"""
+        """Determina si un accordion-item es un WARP real de Honkai Star Rail"""
+        
+        # Verificar por la clase del accordion-item
+        is_warp_by_class = False
+        banner_class = ""
+        
+        if item.has_attr('class'):
+            for cls in item['class']:
+                if cls in self.warp_classes:
+                    is_warp_by_class = True
+                    banner_class = cls
+                    break
+        
+        # Si no tiene clase de warp, no es un banner real
+        if not is_warp_by_class:
+            return False
+        
+        # Verificar características internas de un warp
         html = str(item)
         
-        # Características que identifican UNÍVOCAMENTE un warp:
-        # 1. Tiene la clase 'featured' en algún párrafo
-        # 2. Tiene spans con clase 'hsr-rar' que contienen '5★' o '4★'
-        # 3. Tiene secciones 'featured-characters' o 'featured-cone'
+        # Debe tener featured text con rarezas
+        has_featured = 'featured' in html and ('5★' in html or '4★' in html)
         
-        has_featured_p = 'class="featured"' in html
-        has_rarity = 'hsr-rar' in html and ('5★' in html or '4★' in html)
-        has_featured_chars = 'featured-characters' in html
-        has_featured_cones = 'featured-cone' in html
-        has_avatar_cards = 'avatar-card' in html
-        has_cone_items = 'hsr-set-image' in html
+        # Debe tener personajes o conos
+        has_content = ('avatar-card' in html) or ('hsr-set-image' in html)
         
-        # También debe tener event-name y duration
-        has_event_name = 'event-name' in html
+        # Debe tener duración y nombre
         has_duration = 'Event Duration' in html
+        has_name = 'event-name' in html
         
-        # Un warp SIEMPRE tiene featured text Y contenido destacado
-        is_warp = (has_featured_p or has_rarity) and (has_featured_chars or has_featured_cones or has_avatar_cards or has_cone_items)
-        
-        # Los eventos de juego NO tienen featured
-        is_game_event = 'Memory Turbulence' in html or 'Description:' in html
-        
-        return is_warp and not is_game_event and has_event_name and has_duration
+        return has_featured and has_content and has_duration and has_name
     
     def parse_character(self, card) -> dict:
         """Parsea un personaje de avatar-card y extrae su imagen"""
@@ -273,7 +282,7 @@ class BannerScraper:
             return "Mixto"
     
     def get_banners(self):
-        """Obtiene TODOS los banners de warps"""
+        """Obtiene SOLO los banners de warps reales"""
         try:
             logger.info(f"Obteniendo banners desde {self.url}")
             response = self.session.get(self.url, timeout=15)
@@ -287,15 +296,23 @@ class BannerScraper:
             
             banners = []
             warp_count = 0
+            skipped_count = 0
             
             for item in all_items:
-                # Verificar si es un WARP por su contenido
+                # Verificar si es un WARP real
                 if not self.is_warp_banner(item):
+                    skipped_count += 1
                     continue
                 
-                warp_count += 1
-                
                 try:
+                    # Obtener la clase del banner
+                    banner_class = ""
+                    if item.has_attr('class'):
+                        for cls in item['class']:
+                            if cls in self.warp_classes:
+                                banner_class = cls
+                                break
+                    
                     # Nombre del banner
                     name_tag = item.find('div', class_='event-name')
                     banner_name = name_tag.text.strip() if name_tag else "Banner sin nombre"
@@ -312,37 +329,47 @@ class BannerScraper:
                     featured_5star_char, featured_4star_char = self.extract_characters(item)
                     featured_5star_cone, featured_4star_cone = self.extract_light_cones(item)
                     
-                    # Determinar tipo basado en lo que tiene
+                    # Determinar tipo
                     banner_type = self.classify_banner_type(item, featured_5star_char, featured_4star_char, 
                                                             featured_5star_cone, featured_4star_cone)
                     
-                    # Solo crear banner si tiene contenido
-                    if (featured_5star_char or featured_4star_char or 
-                        featured_5star_cone or featured_4star_cone):
-                        
-                        banner = Banner(
-                            name=banner_name,
-                            banner_type=banner_type,
-                            time_remaining=time_remaining,
-                            featured_5star_char=featured_5star_char,
-                            featured_4star_char=featured_4star_char,
-                            featured_5star_cone=featured_5star_cone,
-                            featured_4star_cone=featured_4star_cone,
-                            duration_text=duration_text
-                        )
-                        banners.append(banner)
-                        logger.info(f"✅ Banner {warp_count}: {banner_name}")
-                        logger.info(f"   - Tipo: {banner_type}")
-                        logger.info(f"   - Personajes 5★: {len(featured_5star_char)}")
-                        logger.info(f"   - Personajes 4★: {len(featured_4star_char)}")
-                        logger.info(f"   - Conos 5★: {len(featured_5star_cone)}")
-                        logger.info(f"   - Conos 4★: {len(featured_4star_cone)}")
+                    warp_count += 1
+                    
+                    banner = Banner(
+                        name=banner_name,
+                        banner_type=banner_type,
+                        time_remaining=time_remaining,
+                        featured_5star_char=featured_5star_char,
+                        featured_4star_char=featured_4star_char,
+                        featured_5star_cone=featured_5star_cone,
+                        featured_4star_cone=featured_4star_cone,
+                        duration_text=duration_text,
+                        banner_class=banner_class
+                    )
+                    banners.append(banner)
+                    
+                    # Log detallado
+                    logger.info(f"✅ Warp {warp_count}: {banner_name} [clase: {banner_class}]")
+                    logger.info(f"   - Tipo: {banner_type}")
+                    logger.info(f"   - Personajes 5★: {len(featured_5star_char)}")
+                    for char in featured_5star_char:
+                        logger.info(f"     • {char['name']} ({char['element']})")
+                    logger.info(f"   - Personajes 4★: {len(featured_4star_char)}")
+                    for char in featured_4star_char:
+                        logger.info(f"     • {char['name']} ({char['element']})")
+                    logger.info(f"   - Conos 5★: {len(featured_5star_cone)}")
+                    for cone in featured_5star_cone:
+                        logger.info(f"     • {cone['name']}")
+                    logger.info(f"   - Conos 4★: {len(featured_4star_cone)}")
+                    for cone in featured_4star_cone:
+                        logger.info(f"     • {cone['name']}")
                     
                 except Exception as e:
                     logger.error(f"Error procesando banner: {e}")
                     continue
             
-            logger.info(f"✅ TOTAL WARPS ENCONTRADOS: {len(banners)}")
+            logger.info(f"✅ WARPS REALES ENCONTRADOS: {len(banners)}")
+            logger.info(f"📊 Items que no son warps: {skipped_count}")
             return banners
             
         except Exception as e:
@@ -369,75 +396,83 @@ def get_element_emoji(element: str) -> str:
     return elements.get(element, elements.get(element.lower(), '🔮'))
 
 def create_banner_embed(banner: Banner) -> discord.Embed:
-    """Crea un embed para un banner con imágenes de personajes y conos"""
+    """Crea un embed precioso para un banner con imágenes de personajes y conos"""
     
-    # Color según tipo
+    # Emoji según el tipo
+    type_emoji = {
+        "Personaje": "🦸",
+        "Cono de Luz": "⚔️",
+        "Mixto (Doble)": "🎁"
+    }.get(banner.banner_type, "🎯")
+    
+    # Color según el tipo
     if banner.banner_type == "Personaje":
         color = discord.Color.from_rgb(255, 215, 0)  # Dorado
-        emoji = "🦸"
     elif banner.banner_type == "Cono de Luz":
         color = discord.Color.from_rgb(147, 112, 219)  # Púrpura
-        emoji = "⚔️"
     else:
         color = discord.Color.from_rgb(52, 152, 219)  # Azul
-        emoji = "🎁"
+    
+    # Título con emoji
+    title = f"{type_emoji} {banner.name}"
     
     embed = discord.Embed(
-        title=f"{emoji} {banner.name}",
+        title=title,
         description=f"**Tipo:** {banner.banner_type}\n**⏳ Tiempo restante:** {banner.time_remaining}",
         color=color,
         timestamp=datetime.now()
     )
     
-    # Duración del evento
+    # Duración del evento (formateada bonito)
     if banner.duration_text:
-        clean_duration = banner.duration_text.replace('Event Duration', '📅 Duración')
+        clean_duration = banner.duration_text.replace('Event Duration', '📅 **Duración**')
+        clean_duration = clean_duration.replace('server time', 'hora del servidor')
         if len(clean_duration) > 1024:
             clean_duration = clean_duration[:1021] + "..."
         embed.add_field(name="📅 Duración", value=clean_duration, inline=False)
     
-    # Personajes 5★
+    # Personajes 5★ (con emojis de elemento)
     if banner.featured_5star_char:
         chars_text = ""
-        for char in banner.featured_5star_char[:4]:
+        for char in banner.featured_5star_char:
             element_emoji = get_element_emoji(char.get('element', 'Unknown'))
             chars_text += f"{element_emoji} **{char['name']}**\n"
         
         if chars_text:
-            embed.add_field(name="✨ Personajes 5★", value=chars_text, inline=True)
+            embed.add_field(name="✨ **Personajes 5★**", value=chars_text, inline=True)
     
     # Personajes 4★
     if banner.featured_4star_char:
         chars_text = ""
-        for char in banner.featured_4star_char[:4]:
+        for char in banner.featured_4star_char:
             element_emoji = get_element_emoji(char.get('element', 'Unknown'))
             chars_text += f"{element_emoji} **{char['name']}**\n"
         
         if chars_text:
-            embed.add_field(name="⭐ Personajes 4★", value=chars_text, inline=True)
+            embed.add_field(name="⭐ **Personajes 4★**", value=chars_text, inline=True)
     
     # Conos de luz 5★
     if banner.featured_5star_cone:
         cones_text = ""
-        for cone in banner.featured_5star_cone[:3]:
-            cones_text += f"• **{cone['name']}** (★5)\n"
+        for cone in banner.featured_5star_cone:
+            cones_text += f"💫 **{cone['name']}** (★5)\n"
         
         if cones_text:
-            embed.add_field(name="💫 Conos de Luz 5★", value=cones_text, inline=False)
+            embed.add_field(name="💫 **Conos de Luz 5★**", value=cones_text, inline=False)
     
     # Conos de luz 4★
     if banner.featured_4star_cone:
         cones_text = ""
-        for cone in banner.featured_4star_cone[:3]:
-            cones_text += f"• **{cone['name']}** (★4)\n"
+        for cone in banner.featured_4star_cone:
+            cones_text += f"📿 **{cone['name']}** (★4)\n"
         
         if cones_text:
-            embed.add_field(name="📿 Conos de Luz 4★", value=cones_text, inline=False)
+            embed.add_field(name="📿 **Conos de Luz 4★**", value=cones_text, inline=False)
     
-    # THUMBNAIL - prioridad a personajes 5★
+    # THUMBNAIL - Elegir la mejor imagen disponible
     thumbnail_url = None
     
-    # Buscar una imagen válida en orden de prioridad
+    # Prioridad: 1. Personaje 5★, 2. Cono 5★, 3. Personaje 4★, 4. Cono 4★
     if banner.featured_5star_char and len(banner.featured_5star_char) > 0:
         thumbnail_url = banner.featured_5star_char[0]['image']
     elif banner.featured_5star_cone and len(banner.featured_5star_cone) > 0:
@@ -449,17 +484,22 @@ def create_banner_embed(banner: Banner) -> discord.Embed:
     else:
         thumbnail_url = "https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png"
     
-    # Establecer thumbnail
     try:
         embed.set_thumbnail(url=thumbnail_url)
     except Exception as e:
         logger.error(f"Error estableciendo thumbnail: {e}")
         embed.set_thumbnail(url="https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png")
     
-    # Footer con totales
+    # Footer con estadísticas
     total_5star = len(banner.featured_5star_char) + len(banner.featured_5star_cone)
     total_4star = len(banner.featured_4star_char) + len(banner.featured_4star_cone)
-    embed.set_footer(text=f"✨ {total_5star} ★5  |  ⭐ {total_4star} ★4  •  Datos de Prydwen.gg")
+    
+    footer_text = f"✨ {total_5star} ★5  |  ⭐ {total_4star} ★4"
+    if banner.banner_class:
+        footer_text += f"  •  {banner.banner_class.upper()}"
+    footer_text += "  •  Datos de Prydwen.gg"
+    
+    embed.set_footer(text=footer_text)
     
     return embed
 
@@ -467,14 +507,14 @@ def create_banner_embed(banner: Banner) -> discord.Embed:
 # VARIABLES DE ENTORNO
 # ============================================
 logger.info("=" * 60)
-logger.info("INICIANDO BOT DE HONKAI STAR RAIL - VERSIÓN FINAL")
+logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - DETECTOR PRECISO DE WARRAPS")
 logger.info("=" * 60)
 
 TOKEN = os.environ.get('DISCORD_TOKEN')
 CHANNEL_ID_STR = os.environ.get('DISCORD_CHANNEL_ID')
 
-logger.info(f"DISCORD_TOKEN: {'✅ ENCONTRADO' if TOKEN else '❌ NO ENCONTRADO'}")
-logger.info(f"DISCORD_CHANNEL_ID: {'✅ ENCONTRADO' if CHANNEL_ID_STR else '❌ NO ENCONTRADO'}")
+logger.info(f"🔑 DISCORD_TOKEN: {'✅ ENCONTRADO' if TOKEN else '❌ NO ENCONTRADO'}")
+logger.info(f"📢 DISCORD_CHANNEL_ID: {'✅ ENCONTRADO' if CHANNEL_ID_STR else '❌ NO ENCONTRADO'}")
 
 TARGET_CHANNEL_ID = None
 if CHANNEL_ID_STR:
@@ -499,7 +539,7 @@ async def on_ready():
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
-            name="todos los banners de HSR | !banners"
+            name="🔮 Warps de HSR | !banners"
         )
     )
     
@@ -533,13 +573,13 @@ async def publish_banners():
 async def send_banners(channel):
     """Envía los banners a un canal"""
     
-    loading_msg = await channel.send("🔍 Escaneando TODOS los banners de Honkai: Star Rail en Prydwen.gg...")
+    loading_msg = await channel.send("🔮 **Escaneando los warps de Honkai: Star Rail en Prydwen.gg...**")
     
     try:
         banners = scraper.get_banners()
         
         if not banners:
-            await loading_msg.edit(content="❌ No se encontraron banners. La estructura de la web puede haber cambiado.")
+            await loading_msg.edit(content="❌ **No se encontraron warps.** La estructura de la web puede haber cambiado.")
             return
         
         await loading_msg.delete()
@@ -558,26 +598,26 @@ async def send_banners(channel):
         
         # Mensaje de resumen
         if banners_enviados > 0:
-            await channel.send(f"✅ Mostrando **{banners_enviados}** banners activos.\n📅 Próxima actualización automática en 24h.")
+            await channel.send(f"✅ **Mostrando {banners_enviados} warps activos.**\n📅 Próxima actualización automática en 24h.")
         else:
-            await channel.send("❌ No se pudo enviar ningún banner.")
+            await channel.send("❌ **No se pudo enviar ningún warp.**")
         
-        logger.info(f"✅ {banners_enviados} banners enviados a {channel.name}")
+        logger.info(f"✅ {banners_enviados} warps enviados a {channel.name}")
         
     except Exception as e:
-        logger.error(f"❌ Error enviando banners: {e}")
-        await loading_msg.edit(content=f"❌ Error: {str(e)[:200]}")
+        logger.error(f"❌ Error enviando warps: {e}")
+        await loading_msg.edit(content=f"❌ **Error:** {str(e)[:200]}")
 
-@bot.command(name='banners')
+@bot.command(name='banners', aliases=['warps', 'warp'])
 async def banners_command(ctx):
-    """Comando para mostrar los banners actuales"""
+    """Comando para mostrar los warps actuales"""
     await send_banners(ctx.channel)
 
-@bot.command(name='banner')
+@bot.command(name='banner', aliases=['warpinfo'])
 async def banner_info(ctx, *, banner_name: str = None):
-    """Muestra información de un banner específico"""
+    """Muestra información de un warp específico"""
     if not banner_name:
-        await ctx.send("❌ Usa: `!banner nombre_del_banner`")
+        await ctx.send("❌ **Usa:** `!banner nombre_del_warp`\nPor ejemplo: `!banner Deadly Dancer`")
         return
     
     banners = scraper.get_banners()
@@ -602,7 +642,7 @@ async def banner_info(ctx, *, banner_name: str = None):
                     break
     
     if not found_banners:
-        await ctx.send(f"❌ No se encontró '{banner_name}'")
+        await ctx.send(f"❌ **No se encontró '{banner_name}'**")
         return
     
     for banner in found_banners[:2]:  # Máximo 2 banners
@@ -613,12 +653,12 @@ async def banner_info(ctx, *, banner_name: str = None):
 @commands.has_permissions(administrator=True)
 async def refresh_banners(ctx):
     """Fuerza actualización (solo admins)"""
-    await ctx.send("🔄 Forzando actualización de banners...")
+    await ctx.send("🔄 **Forzando actualización de warps...**")
     await send_banners(ctx.channel)
 
 @bot.command(name='stats')
 async def banner_stats(ctx):
-    """Muestra estadísticas de los banners"""
+    """Muestra estadísticas de los warps"""
     banners = scraper.get_banners()
     
     total_banners = len(banners)
@@ -628,11 +668,12 @@ async def banner_stats(ctx):
     total_4star_cones = sum(len(b.featured_4star_cone) for b in banners)
     
     embed = discord.Embed(
-        title="📊 Estadísticas de Banners HSR",
+        title="📊 **Estadísticas de Warps HSR**",
+        description="Resumen de los warps actualmente disponibles",
         color=discord.Color.blue()
     )
     
-    embed.add_field(name="🎯 Banners activos", value=str(total_banners), inline=True)
+    embed.add_field(name="🎯 Warps activos", value=str(total_banners), inline=True)
     embed.add_field(name="✨ Personajes 5★", value=str(total_5star_chars), inline=True)
     embed.add_field(name="⭐ Personajes 4★", value=str(total_4star_chars), inline=True)
     embed.add_field(name="💫 Conos 5★", value=str(total_5star_cones), inline=True)
@@ -643,19 +684,19 @@ async def banner_stats(ctx):
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
-        await ctx.send("❌ Comando no encontrado. Usa `!banners`")
+        await ctx.send("❌ **Comando no encontrado.** Usa `!banners` para ver los warps.")
     elif isinstance(error, commands.MissingPermissions):
-        await ctx.send("❌ No tienes permiso para usar este comando")
+        await ctx.send("❌ **No tienes permiso para usar este comando.**")
     elif isinstance(error, discord.Forbidden):
         logger.error(f"Error de permisos: {error}")
         try:
-            await ctx.send("❌ El bot no tiene permisos suficientes en este canal. Por favor, verifica que tenga permisos de 'Enviar mensajes' y 'Insertar enlaces'.")
+            await ctx.send("❌ **El bot no tiene permisos suficientes en este canal.** Por favor, verifica que tenga permisos de 'Enviar mensajes' y 'Insertar enlaces'.")
         except:
             logger.error("No se pudo enviar mensaje de error por falta de permisos")
     else:
         logger.error(f"Error en comando: {error}")
         try:
-            await ctx.send(f"❌ Error: {str(error)[:100]}")
+            await ctx.send(f"❌ **Error:** {str(error)[:100]}")
         except:
             pass
 
