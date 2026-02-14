@@ -1145,7 +1145,7 @@ async def on_ready():
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
-            name="🔮 Personajes 5★ | !personajes"
+            name="Buscando Personajes 5★ | !personajes"
         )
     )
     
