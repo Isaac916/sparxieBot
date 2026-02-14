@@ -762,7 +762,7 @@ class BannerScraper:
         return False
     
     def extract_endgame_content(self, item):
-        """Extrae información del contenido End Game"""
+        """Extrae información del contenido End Game con tiempo correcto"""
         name_tag = item.find('div', class_='event-name')
         name = name_tag.text.strip() if name_tag else ""
         
@@ -770,9 +770,12 @@ class BannerScraper:
         version_match = re.search(r'\(([^)]+)\)', name)
         version = version_match.group(1) if version_match else ""
         
-        # Extraer tiempo restante
+        # Extraer tiempo restante del countdown - ¡ESTA ES LA PARTE CLAVE!
         time_tag = item.find('span', class_='time')
         time_remaining = time_tag.text.strip() if time_tag else "Tiempo desconocido"
+        
+        # Limpiar el tiempo (a veces viene con espacios extras)
+        time_remaining = re.sub(r'\s+', ' ', time_remaining).strip()
         
         # Determinar el tipo
         content_type = ""
@@ -780,6 +783,8 @@ class BannerScraper:
             if mode in name:
                 content_type = mode
                 break
+        
+        logger.info(f"⏱️ Tiempo extraído para {content_type}: {time_remaining}")
         
         return EndgameContent(name, version, time_remaining, content_type)
     
@@ -1054,30 +1059,44 @@ async def create_character_post(forum_channel, character_name, character_info, b
     return thread_obj
 
 async def create_endgame_post(forum_channel, endgame_content):
-    """Crea una publicación en el foro para contenido End Game"""
+    """Crea una publicación en el foro para contenido End Game con tiempo visible en la tarjeta"""
     
-    # Título: nombre del modo + versión
-    thread_name = f"⚔️ {endgame_content.content_type} {endgame_content.version}"
+    # Extraer el tiempo correcto del countdown
+    time_remaining = endgame_content.time_remaining
     
-    # La imagen la pondrás tú después (dejamos un placeholder)
+    # Título: nombre del modo + versión + tiempo (visible desde fuera)
+    thread_name = f"⚔️ {endgame_content.content_type} {endgame_content.version} - {time_remaining}"
+    
+    # Crear un embed con la imagen y el tiempo
+    embed = discord.Embed(
+        title=f"{endgame_content.content_type} {endgame_content.version}",
+        description=f"⏳ **Tiempo restante:** {time_remaining}",
+        color=discord.Color.orange()
+    )
+    
+    # Aquí pondrás la URL de tu imagen (cámbiala por la que quieras usar)
+    # Puedes usar imágenes diferentes para cada modo
+    # IMPORTANTE: Reemplaza estas URLs con las imágenes que quieras usar
+    image_urls = {
+        'Memory of Chaos': 'https://ejemplo.com/moc.jpg',
+        'Pure Fiction': 'https://ejemplo.com/pf.jpg', 
+        'Apocalyptic Shadow': 'https://ejemplo.com/as.jpg'
+    }
+    
+    image_url = image_urls.get(endgame_content.content_type, 'https://ejemplo.com/default.jpg')
+    embed.set_image(url=image_url)
+    embed.set_footer(text="Actualización diaria automática")
+    
+    # Crear la publicación con el embed como contenido principal
     thread = await forum_channel.create_thread(
         name=thread_name,
-        content="**[Aquí irá la imagen del End Game content]**",
+        embed=embed,
         auto_archive_duration=10080
     )
     
     thread_obj = thread[0] if isinstance(thread, tuple) else thread
     
-    # Información del End Game
-    info_text = (
-        f"## {endgame_content.content_type} {endgame_content.version}\n\n"
-        f"⏳ **Tiempo restante:** {endgame_content.time_remaining}\n\n"
-        f"*Reemplaza este mensaje con la imagen correspondiente*"
-    )
-    
-    await thread_obj.send(info_text)
-    
-    logger.info(f"✅ Publicación creada para End Game: {endgame_content.content_type} {endgame_content.version}")
+    logger.info(f"✅ Publicación creada para End Game: {endgame_content.content_type} {endgame_content.version} - {time_remaining}")
     
     return thread_obj
 
@@ -1233,16 +1252,22 @@ async def update_endgame_posts(channel_id, endgame_list):
                     existing_posts[content_id] = thread
                     break
         
-        # Crear nuevas publicaciones para End Game que no existen
+        # Crear o actualizar publicaciones
         for content in endgame_list:
             content_id = f"{content.content_type}_{content.version}".lower().replace(' ', '_')
+            time_remaining = content.time_remaining
             
             if content_id in existing_posts:
-                # Actualizar tiempo si es necesario
+                # Actualizar título y enviar mensaje de actualización
                 thread = existing_posts[content_id]
+                new_title = f"⚔️ {content.content_type} {content.version} - {time_remaining}"
+                
                 try:
+                    if thread.name != new_title:
+                        await thread.edit(name=new_title)
+                    
                     # Enviar mensaje de actualización
-                    await thread.send(f"🔄 **Actualización**\n⏳ Tiempo restante: {content.time_remaining}")
+                    await thread.send(f"🔄 **Actualización**\n⏳ Tiempo restante: {time_remaining}")
                     logger.info(f"✅ Hilo actualizado: {content.content_type} {content.version}")
                 except Exception as e:
                     logger.error(f"Error actualizando hilo: {e}")
