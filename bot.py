@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
-
+scraper = BannerScraper()
 class Banner:
     def __init__(self, name: str, banner_type: str, time_remaining: str, 
                  featured_5star: list, featured_4star: list, 
