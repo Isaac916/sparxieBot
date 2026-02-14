@@ -105,29 +105,31 @@ class BannerScraper:
         return None
     
     def is_warp_banner(self, item) -> bool:
-        """Determina si un accordion-item es un WARP (no un evento de juego)"""
+        """Determina si un accordion-item es un WARP (banner de personajes/conos)"""
         html = str(item)
         
-        # Un WARP verdadero SIEMPRE tiene al menos UNA de estas características:
+        # Características de un warp banner:
+        # 1. Tiene clase 'swan' en el accordion-item (los warps tienen clase 'swan')
+        # 2. Tiene secciones 'featured-characters' o 'featured-cone'
+        # 3. Tiene p.featured con rarezas (5★, 4★)
+        
+        has_swan_class = 'swan' in item.get('class', []) if item.has_attr('class') else False
         has_featured_chars = 'featured-characters' in html
         has_featured_cones = 'featured-cone' in html
-        
-        # También debe tener nombre y duración
+        has_featured_text = 'featured' in html and ('5★' in html or '4★' in html)
         has_event_name = 'event-name' in html
-        has_duration = 'Event Duration' in html
         
-        # Los eventos de juego (Memory Turbulence) NO tienen featured
-        is_game_event = 'Memory Turbulence' in html or 'Description:' in html
-        
-        return (has_event_name and has_duration and 
-                (has_featured_chars or has_featured_cones) and 
-                not is_game_event)
+        # Los warps SIEMPRE tienen swan class O featured content
+        return (has_swan_class or has_featured_chars or has_featured_cones) and has_featured_text and has_event_name
     
     def classify_banner_type(self, item) -> str:
         """Clasifica si es banner de personaje, cono o mixto"""
         html = str(item).lower()
         has_chars = 'featured-characters' in html
         has_cones = 'featured-cone' in html
+        
+        # Verificar si tiene personajes 5★
+        has_5star_char = '5★' in html and 'character' in html
         
         if has_chars and not has_cones:
             return "Personaje"
@@ -263,24 +265,26 @@ class BannerScraper:
             soup = BeautifulSoup(response.text, 'html.parser')
             
             # Buscar TODOS los accordion-item
-            all_items = soup.find_all('div', class_='swan accordion-item')
+            all_items = soup.find_all('div', class_='accordion-item')
             logger.info(f"Total accordion-items encontrados: {len(all_items)}")
             
             banners = []
             
             for item in all_items:
-                # Verificar si es un WARP (tiene personajes o conos destacados)
+                # Verificar si es un WARP
                 if not self.is_warp_banner(item):
                     continue
                 
                 try:
-                    # Extraer datos básicos
+                    # Nombre del banner
                     name_tag = item.find('div', class_='event-name')
                     banner_name = name_tag.text.strip() if name_tag else "Banner sin nombre"
                     
+                    # Tiempo restante
                     time_tag = item.find('span', class_='time')
                     time_remaining = time_tag.text.strip() if time_tag else "Tiempo desconocido"
                     
+                    # Duración
                     duration_tag = item.find('p', class_='duration')
                     duration_text = duration_tag.text.strip() if duration_tag else ""
                     
@@ -291,7 +295,7 @@ class BannerScraper:
                     featured_5star_char, featured_4star_char = self.extract_characters(item)
                     featured_5star_cone, featured_4star_cone = self.extract_light_cones(item)
                     
-                    # Crear banner solo si tiene contenido
+                    # Solo crear banner si tiene contenido
                     if (featured_5star_char or featured_4star_char or 
                         featured_5star_cone or featured_4star_cone):
                         
