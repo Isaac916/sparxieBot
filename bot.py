@@ -11,6 +11,7 @@ import sys
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 import json
+import difflib
 
 # Configurar logging
 logging.basicConfig(
@@ -26,7 +27,549 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 # ============================================
-# CLASE BANNER
+# BASE DE DATOS DE ÍCONOS DE PERSONAJES
+# ============================================
+
+# Tu lista de íconos de Fandom Wiki
+CHARACTER_ICONS = [
+    {
+        "id": "acheron",
+        "name": "Acheron",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/24/Character_Acheron_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "aglaea",
+        "name": "Aglaea",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/f/f8/Character_Aglaea_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "anaxa",
+        "name": "Anaxa",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/f/f0/Character_Anaxa_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "archer",
+        "name": "Archer",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/8/8f/Character_Archer_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "argenti",
+        "name": "Argenti",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c0/Character_Argenti_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "arlan",
+        "name": "Arlan",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/a/a9/Character_Arlan_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "asta",
+        "name": "Asta",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/9f/Character_Asta_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "aventurine",
+        "name": "Aventurine",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/d/da/Character_Aventurine_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "bailu",
+        "name": "Bailu",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/47/Character_Bailu_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "black-swan",
+        "name": "Black Swan",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/90/Character_Black_Swan_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "blade",
+        "name": "Blade",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/90/Character_Blade_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "boothill",
+        "name": "Boothill",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/78/Character_Boothill_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "bronya",
+        "name": "Bronya",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/0/0f/Character_Bronya_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "castorice",
+        "name": "Castorice",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/d/da/Character_Castorice_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "cerydra",
+        "name": "Cerydra",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c9/Character_Cerydra_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "cipher",
+        "name": "Cipher",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/99/Character_Cipher_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "clara",
+        "name": "Clara",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/a/a4/Character_Clara_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "cyrene",
+        "name": "Cyrene",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/99/Character_Cyrene_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "dan-heng",
+        "name": "Dan Heng",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/1a/Character_Dan_Heng_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "dan-heng-•-imbibitor-lunae",
+        "name": "Dan Heng • Imbibitor Lunae",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/2a/Character_Dan_Heng_%E2%80%A2_Imbibitor_Lunae_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "dan-heng-•-permansor-terrae",
+        "name": "Dan Heng • Permansor Terrae",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/f/fc/Character_Dan_Heng_%E2%80%A2_Permansor_Terrae_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "dr-ratio",
+        "name": "Dr. Ratio",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/47/Character_Dr._Ratio_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "evernight",
+        "name": "Evernight",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/b/b7/Character_Evernight_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "feixiao",
+        "name": "Feixiao",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/75/Character_Feixiao_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "firefly",
+        "name": "Firefly",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/9e/Character_Firefly_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "fu-xuan",
+        "name": "Fu Xuan",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/1a/Character_Fu_Xuan_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "fugue",
+        "name": "Fugue",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c0/Character_Fugue_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "gallagher",
+        "name": "Gallagher",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/12/Character_Gallagher_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "gepard",
+        "name": "Gepard",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/75/Character_Gepard_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "guinaifen",
+        "name": "Guinaifen",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/98/Character_Guinaifen_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "hanya",
+        "name": "Hanya",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/99/Character_Hanya_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "herta",
+        "name": "Herta",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/b/bf/Character_Herta_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "himeko",
+        "name": "Himeko",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/0/00/Character_Himeko_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "hook",
+        "name": "Hook",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/d/d5/Character_Hook_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "huohuo",
+        "name": "Huohuo",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/6/68/Character_Huohuo_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "hyacine",
+        "name": "Hyacine",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c0/Character_Hyacine_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "hysilens",
+        "name": "Hysilens",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/19/Character_Hysilens_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "jade",
+        "name": "Jade",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/f/fd/Character_Jade_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "jiaoqiu",
+        "name": "Jiaoqiu",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/48/Character_Jiaoqiu_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "jing-yuan",
+        "name": "Jing Yuan",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/8/88/Character_Jing_Yuan_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "jingliu",
+        "name": "Jingliu",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/f/f9/Character_Jingliu_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "kafka",
+        "name": "Kafka",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/8/8c/Character_Kafka_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "lingsha",
+        "name": "Lingsha",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/a/ab/Character_Lingsha_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "luka",
+        "name": "Luka",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c7/Character_Luka_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "luocha",
+        "name": "Luocha",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/20/Character_Luocha_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "lynx",
+        "name": "Lynx",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/6/6c/Character_Lynx_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "march-7th",
+        "name": "March 7th",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/d/d3/Character_March_7th_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "march-7th",
+        "name": "March 7th",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/7b/Character_March_7th_%28The_Hunt%29_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "misha",
+        "name": "Misha",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/4d/Character_Misha_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "moze",
+        "name": "Moze",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/25/Character_Moze_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "mydei",
+        "name": "Mydei",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/8/89/Character_Mydei_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "natasha",
+        "name": "Natasha",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/6/61/Character_Natasha_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "pela",
+        "name": "Pela",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c2/Character_Pela_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "phainon",
+        "name": "Phainon",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/e/ef/Character_Phainon_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "qingque",
+        "name": "Qingque",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/2e/Character_Qingque_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "rappa",
+        "name": "Rappa",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/8/84/Character_Rappa_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "robin",
+        "name": "Robin",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/72/Character_Robin_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "ruan-mei",
+        "name": "Ruan Mei",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/16/Character_Ruan_Mei_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "saber",
+        "name": "Saber",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/43/Character_Saber_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "sampo",
+        "name": "Sampo",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/5/53/Character_Sampo_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "seele",
+        "name": "Seele",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/9a/Character_Seele_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "serval",
+        "name": "Serval",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/7c/Character_Serval_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "silver-wolf",
+        "name": "Silver Wolf",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/a/a3/Character_Silver_Wolf_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "sparkle",
+        "name": "Sparkle",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/6/6b/Character_Sparkle_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "sunday",
+        "name": "Sunday",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/3/38/Character_Sunday_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "sushang",
+        "name": "Sushang",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/97/Character_Sushang_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "the-dahlia",
+        "name": "The Dahlia",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/71/Character_The_Dahlia_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "the-herta",
+        "name": "The Herta",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/3/39/Character_The_Herta_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "tingyun",
+        "name": "Tingyun",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/4f/Character_Tingyun_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "topaz-&-numby",
+        "name": "Topaz & Numby",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/8/89/Character_Topaz_%26_Numby_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "trailblazer",
+        "name": "Trailblazer",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/8/89/Character_Trailblazer_%28Destruction%29_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "trailblazer",
+        "name": "Trailblazer",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c3/Character_Trailblazer_%28Preservation%29_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "trailblazer",
+        "name": "Trailblazer",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/f/fd/Character_Trailblazer_%28Harmony%29_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "trailblazer",
+        "name": "Trailblazer",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/43/Character_Trailblazer_%28Remembrance%29_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "tribbie",
+        "name": "Tribbie",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/f/f3/Character_Tribbie_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "welt",
+        "name": "Welt",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/11/Character_Welt_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "xueyi",
+        "name": "Xueyi",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/23/Character_Xueyi_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "yanqing",
+        "name": "Yanqing",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/5/57/Character_Yanqing_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "yukong",
+        "name": "Yukong",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/3/32/Character_Yukong_Icon.png",
+        "rarity": 4
+    },
+    {
+        "id": "yunli",
+        "name": "Yunli",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/43/Character_Yunli_Icon.png",
+        "rarity": 5
+    },
+    {
+        "id": "yao-guang",
+        "name": "Yao Guang",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/1e/Character_Yao_Guang_Icon.png",
+        "rarity": 5
+    }
+]
+
+# Crear diccionarios para búsqueda rápida
+CHARACTER_ICON_MAP = {}
+for char in CHARACTER_ICONS:
+    # Versión normalizada del nombre (minúsculas, sin espacios extra)
+    normalized_name = char['name'].lower().strip()
+    CHARACTER_ICON_MAP[normalized_name] = char['image']
+    
+    # También guardar por id
+    CHARACTER_ICON_MAP[char['id'].lower()] = char['image']
+    
+    # Guardar también versiones sin puntos ni caracteres especiales
+    simple_name = re.sub(r'[^a-z0-9]', '', normalized_name)
+    CHARACTER_ICON_MAP[simple_name] = char['image']
+
+# Imagen por defecto
+DEFAULT_IMAGE = "https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png"
+
+def get_character_icon(character_name):
+    """Obtiene el ícono de un personaje por su nombre"""
+    if not character_name:
+        return DEFAULT_IMAGE
+    
+    # Normalizar el nombre de búsqueda
+    search_name = character_name.lower().strip()
+    
+    # Búsqueda exacta
+    if search_name in CHARACTER_ICON_MAP:
+        logger.info(f"✅ Ícono encontrado para {character_name}")
+        return CHARACTER_ICON_MAP[search_name]
+    
+    # Búsqueda por coincidencia parcial
+    for key, url in CHARACTER_ICON_MAP.items():
+        if search_name in key or key in search_name:
+            logger.info(f"✅ Ícono encontrado (coincidencia parcial) para {character_name}: {key}")
+            return url
+    
+    # Búsqueda por similitud (difflib)
+    try:
+        matches = difflib.get_close_matches(search_name, CHARACTER_ICON_MAP.keys(), n=1, cutoff=0.6)
+        if matches:
+            logger.info(f"✅ Ícono encontrado (similitud) para {character_name}: {matches[0]}")
+            return CHARACTER_ICON_MAP[matches[0]]
+    except:
+        pass
+    
+    logger.warning(f"⚠️ No se encontró ícono para {character_name}, usando imagen por defecto")
+    return DEFAULT_IMAGE
+
+# ============================================
+# CLASE BANNER (modificada para usar íconos)
 # ============================================
 class Banner:
     def __init__(self, name: str, banner_type: str, time_remaining: str, 
@@ -102,7 +645,7 @@ class ForumManager:
         self.save_posts()
 
 # ============================================
-# CLASE BANNER SCRAPER
+# CLASE BANNER SCRAPER (simplificada, sin extracción de imágenes)
 # ============================================
 class BannerScraper:
     """Clase para hacer scraping de los banners de warps en Prydwen"""
@@ -116,8 +659,6 @@ class BannerScraper:
         }
         self.session = requests.Session()
         self.session.headers.update(self.headers)
-        # Imagen por defecto para fallback
-        self.default_image = "https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png"
         
         # Lista de warps reales conocidos (para filtrar)
         self.real_warps = [
@@ -131,112 +672,6 @@ class BannerScraper:
             'Lightning': '⚡', 'Wind': '💨', 'Quantum': '⚛️',
             'Imaginary': '✨'
         }
-    
-    def extract_image_url(self, img_tag) -> str:
-        """Extrae la URL completa de la imagen de manera más robusta"""
-        if not img_tag:
-            logger.debug("No img_tag found")
-            return self.default_image
-        
-        url = None
-        
-        try:
-            # Método 1: Buscar en picture > source (la imagen real está aquí)
-            picture = img_tag.find_parent('picture')
-            if picture:
-                source = picture.find('source')
-                if source and source.get('srcset'):
-                    srcset = source.get('srcset')
-                    logger.debug(f"Found picture source srcset: {srcset[:200]}...")
-                    
-                    # Tomar la URL de mayor resolución (la última)
-                    urls = srcset.split(',')
-                    if urls:
-                        # La última URL suele ser la de mayor resolución
-                        last_url = urls[-1].strip()
-                        
-                        # Extraer solo la URL (antes del espacio si hay)
-                        if ' ' in last_url:
-                            last_url = last_url.split(' ')[0]
-                        
-                        # Construir URL completa
-                        if last_url.startswith('http'):
-                            url = last_url
-                        elif last_url.startswith('/'):
-                            url = f"https://www.prydwen.gg{last_url}"
-                        elif last_url.startswith('static'):
-                            url = f"https://www.prydwen.gg/{last_url}"
-                        
-                        if url:
-                            logger.debug(f"URL from picture source: {url}")
-            
-            # Método 2: Si no funciona, buscar en el img dentro de picture
-            if not url and picture:
-                img_in_picture = picture.find('img')
-                if img_in_picture:
-                    # Intentar con srcset del img
-                    srcset = img_in_picture.get('srcset', '')
-                    if srcset:
-                        urls = srcset.split(',')
-                        if urls:
-                            last_url = urls[-1].strip()
-                            if ' ' in last_url:
-                                last_url = last_url.split(' ')[0]
-                            
-                            if last_url.startswith('http'):
-                                url = last_url
-                            elif last_url.startswith('/'):
-                                url = f"https://www.prydwen.gg{last_url}"
-                            elif last_url.startswith('static'):
-                                url = f"https://www.prydwen.gg/{last_url}"
-                    
-                    # Si no hay srcset, intentar con src
-                    if not url:
-                        src = img_in_picture.get('src', '')
-                        if src and not src.startswith('data:'):
-                            if src.startswith('http'):
-                                url = src
-                            elif src.startswith('/'):
-                                url = f"https://www.prydwen.gg{src}"
-                            elif src.startswith('static'):
-                                url = f"https://www.prydwen.gg/{src}"
-            
-            # Método 3: src del img original como último recurso
-            if not url:
-                src = img_tag.get('src', '')
-                if src and not src.startswith('data:'):
-                    if src.startswith('http'):
-                        url = src
-                    elif src.startswith('/'):
-                        url = f"https://www.prydwen.gg{src}"
-                    elif src.startswith('static'):
-                        url = f"https://www.prydwen.gg/{src}"
-            
-            # Limpiar y validar la URL
-            if url:
-                # Eliminar parámetros de query y fragmentos
-                url = url.split('?')[0].split('#')[0]
-                
-                # Asegurar que la URL es completa
-                if url.startswith(('http://', 'https://')):
-                    logger.info(f"✅ Imagen encontrada: {url}")
-                    return url
-                elif url.startswith('/'):
-                    full_url = f"https://www.prydwen.gg{url}"
-                    logger.info(f"✅ Imagen encontrada (con dominio): {full_url}")
-                    return full_url
-                else:
-                    full_url = f"https://www.prydwen.gg/{url}"
-                    logger.info(f"✅ Imagen encontrada (con dominio): {full_url}")
-                    return full_url
-            
-            logger.warning("No se encontró URL de imagen válida")
-            
-        except Exception as e:
-            logger.error(f"Error extrayendo URL: {e}")
-        
-        logger.info(f"⚠️ Usando imagen por defecto: {self.default_image}")
-        return self.default_image
     
     def parse_date_from_duration(self, duration_text):
         """Parsea las fechas de inicio y fin del texto de duración"""
@@ -293,7 +728,7 @@ class BannerScraper:
         return is_warp and not is_game_event and has_event_name and has_duration
     
     def parse_character(self, card) -> dict:
-        """Parsea un personaje de avatar-card y extrae su imagen"""
+        """Parsea un personaje de avatar-card (sin imagen)"""
         try:
             a_tag = card.find('a')
             name = "Unknown"
@@ -304,9 +739,6 @@ class BannerScraper:
                 char_key = href.split('/')[-1]
                 name = char_key.replace('-', ' ').title()
                 logger.debug(f"Parsing character: {name} (key: {char_key})")
-            
-            img_tag = card.find('img')
-            image_url = self.extract_image_url(img_tag)
             
             element = "Unknown"
             element_tag = card.find('span', class_='floating-element')
@@ -319,7 +751,8 @@ class BannerScraper:
             card_html = str(card)
             rarity = 5 if 'rarity-5' in card_html or 'rar-5' in card_html else 4
             
-            logger.info(f"📸 Personaje {name} - Imagen: {image_url}")
+            # Obtener imagen de nuestra base de datos
+            image_url = get_character_icon(name)
             
             return {
                 'name': name,
@@ -331,25 +764,23 @@ class BannerScraper:
             logger.error(f"Error parseando personaje: {e}")
             return {
                 'name': "Unknown",
-                'image': self.default_image,
+                'image': DEFAULT_IMAGE,
                 'element': "Unknown",
                 'rarity': 4
             }
     
     def parse_light_cone(self, cone_item) -> dict:
-        """Parsea un cono de luz y extrae su imagen"""
+        """Parsea un cono de luz (sin imagen)"""
         try:
             name_tag = cone_item.find('span', class_='hsr-set-name')
             name = name_tag.text.strip() if name_tag else "Unknown"
             logger.debug(f"Parsing light cone: {name}")
             
-            img_tag = cone_item.find('img')
-            image_url = self.extract_image_url(img_tag)
-            
             cone_html = str(cone_item)
             rarity = 5 if 'rarity-5' in cone_html or 'rar-5' in cone_html else 4
             
-            logger.info(f"📸 Cono {name} - Imagen: {image_url}")
+            # Para conos usamos imagen por defecto (podríamos expandir después)
+            image_url = DEFAULT_IMAGE
             
             return {
                 'name': name,
@@ -359,7 +790,7 @@ class BannerScraper:
         except Exception:
             return {
                 'name': "Unknown Cone",
-                'image': self.default_image,
+                'image': DEFAULT_IMAGE,
                 'rarity': 4
             }
     
@@ -601,10 +1032,10 @@ async def create_forum_post(forum_channel, banner, status):
     # Enviar todas las imágenes como mensajes en el hilo
     all_images = []
     
-    # Recopilar todas las URLs de imágenes (evitando duplicados y la imagen por defecto)
+    # Recopilar todas las URLs de imágenes (evitando duplicados)
     for char in banner.characters_data:
         if char.get('image') and char['image'] not in all_images:
-            if char['image'] != scraper.default_image:
+            if char['image'] != DEFAULT_IMAGE:
                 all_images.append(char['image'])
                 logger.info(f"🖼️ Imagen de personaje añadida: {char['name']} - {char['image']}")
             else:
@@ -612,7 +1043,7 @@ async def create_forum_post(forum_channel, banner, status):
     
     for cone in banner.cones_data:
         if cone.get('image') and cone['image'] not in all_images:
-            if cone['image'] != scraper.default_image:
+            if cone['image'] != DEFAULT_IMAGE:
                 all_images.append(cone['image'])
                 logger.info(f"🖼️ Imagen de cono añadida: {cone['name']} - {cone['image']}")
             else:
@@ -624,12 +1055,12 @@ async def create_forum_post(forum_channel, banner, status):
     if all_images:
         await thread_obj.send("## 🖼️ **Galería de Imágenes**")
         
-        # Enviar cada imagen individualmente para mejor visualización
+        # Enviar cada imagen individualmente
         for i, img_url in enumerate(all_images[:10], 1):
             try:
                 logger.info(f"Enviando imagen {i}: {img_url}")
                 
-                # Verificar que la URL es accesible (opcional)
+                # Verificar que la URL es accesible
                 try:
                     response = requests.head(img_url, timeout=5)
                     if response.status_code == 200:
@@ -639,7 +1070,7 @@ async def create_forum_post(forum_channel, banner, status):
                 except:
                     logger.warning(f"⚠️ No se pudo verificar URL {i}")
                 
-                # Enviar la imagen directamente (Discord la mostrará)
+                # Enviar la imagen directamente
                 await thread_obj.send(img_url)
                 logger.info(f"✅ Imagen {i} enviada correctamente")
                 await asyncio.sleep(0.5)
@@ -662,7 +1093,7 @@ async def create_forum_post(forum_channel, banner, status):
     total_5star = len(banner.featured_5star_char) + len(banner.featured_5star_cone)
     total_4star = len(banner.featured_4star_char) + len(banner.featured_4star_cone)
     
-    # Mensaje de resumen con emojis
+    # Mensaje de resumen
     summary = f"""## 📊 **Resumen**
 ✨ **{total_5star} ★5**  |  ⭐ **{total_4star} ★4**
 
@@ -676,7 +1107,7 @@ async def create_forum_post(forum_channel, banner, status):
 # VARIABLES DE ENTORNO
 # ============================================
 logger.info("=" * 60)
-logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - FORO POR BANNER")
+logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - CON ÍCONOS DE FANDOM")
 logger.info("=" * 60)
 
 TOKEN = os.environ.get('DISCORD_TOKEN')
@@ -784,7 +1215,7 @@ async def update_forum_channel(channel_id, banners, status):
         # Los hilos activos normales (no archivados)
         active_threads.extend(channel.threads)
         
-        # Hilos archivados - hay que iterar con async for
+        # Hilos archivados
         async for thread in channel.archived_threads(limit=100):
             active_threads.append(thread)
         
@@ -838,7 +1269,6 @@ async def update_forum_channel(channel_id, banners, status):
         # Archivar publicaciones de banners que ya no existen
         current_ids = {b.banner_id for b in banners}
         for thread in active_threads:
-            thread_id = None
             for banner_id, existing_thread in existing_posts.items():
                 if existing_thread.id == thread.id and banner_id not in current_ids:
                     try:
@@ -905,7 +1335,6 @@ async def banners_command(ctx):
                 }.get(banner.banner_type, "🎯")
                 response += f"{type_emoji} **{banner.name}** - {banner.time_remaining}\n"
         
-        # Dividir en mensajes más pequeños si es necesario
         if len(response) > 2000:
             parts = [response[i:i+1900] for i in range(0, len(response), 1900)]
             for part in parts:
