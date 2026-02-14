@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 # Configuración del bot
 intents = discord.Intents.default()
 intents.message_content = True
-intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 # ============================================
@@ -50,61 +49,57 @@ class Banner:
         self.cones_data = cones_data if cones_data else []
 
 # ============================================
-# CLASE PARA GESTIONAR HILOS
+# CLASE PARA GESTIONAR PUBLICACIONES DE FORO
 # ============================================
-class ThreadManager:
-    """Gestiona los hilos (threads) del bot"""
+class ForumManager:
+    """Gestiona las publicaciones en canales de foro"""
     
     def __init__(self):
-        self.thread_file = "banner_threads.json"
-        self.threads = self.load_threads()
+        self.posts_file = "forum_posts.json"
+        self.posts = self.load_posts()
     
-    def load_threads(self):
-        """Carga los hilos guardados"""
+    def load_posts(self):
+        """Carga las publicaciones guardadas"""
         try:
-            if os.path.exists(self.thread_file):
-                with open(self.thread_file, 'r', encoding='utf-8') as f:
+            if os.path.exists(self.posts_file):
+                with open(self.posts_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
         except Exception as e:
-            logger.error(f"Error cargando hilos: {e}")
+            logger.error(f"Error cargando publicaciones: {e}")
         return {}
     
-    def save_threads(self):
-        """Guarda los hilos"""
+    def save_posts(self):
+        """Guarda las publicaciones"""
         try:
-            with open(self.thread_file, 'w', encoding='utf-8') as f:
-                json.dump(self.threads, f, indent=2, ensure_ascii=False)
+            with open(self.posts_file, 'w', encoding='utf-8') as f:
+                json.dump(self.posts, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            logger.error(f"Error guardando hilos: {e}")
+            logger.error(f"Error guardando publicaciones: {e}")
     
-    def get_thread_id(self, channel_id, banner_id):
-        """Obtiene el ID del hilo para un banner específico"""
+    def get_post_id(self, channel_id, banner_id):
+        """Obtiene el ID de la publicación para un banner específico"""
         key = f"{channel_id}_{banner_id}"
-        return self.threads.get(key)
+        return self.posts.get(key)
     
-    def set_thread_id(self, channel_id, banner_id, thread_id, message_id):
-        """Guarda el ID del hilo para un banner específico"""
+    def set_post_id(self, channel_id, banner_id, thread_id):
+        """Guarda el ID de la publicación para un banner específico"""
         key = f"{channel_id}_{banner_id}"
-        self.threads[key] = {
-            "thread_id": thread_id,
-            "message_id": message_id,
-            "last_updated": datetime.now().isoformat()
-        }
-        self.save_threads()
+        self.posts[key] = thread_id
+        self.save_posts()
     
-    def remove_thread(self, channel_id, banner_id):
-        """Elimina un hilo del registro"""
+    def remove_post(self, channel_id, banner_id):
+        """Elimina una publicación del registro"""
         key = f"{channel_id}_{banner_id}"
-        if key in self.threads:
-            del self.threads[key]
-            self.save_threads()
+        if key in self.posts:
+            del self.posts[key]
+            self.save_posts()
     
     def clear_channel(self, channel_id):
-        """Limpia todos los hilos de un canal"""
-        keys_to_delete = [k for k in self.threads.keys() if k.startswith(f"{channel_id}_")]
+        """Limpia todas las publicaciones de un canal"""
+        keys_to_delete = [k for k in self.posts.keys() if k.startswith(f"{channel_id}_")]
         for key in keys_to_delete:
-            del self.threads[key]
-        self.save_threads()
+            del self.posts[key]
+        self.save_posts()
 
 # ============================================
 # CLASE BANNER SCRAPER
@@ -436,7 +431,7 @@ class BannerScraper:
 # INSTANCIAS GLOBALES
 # ============================================
 scraper = BannerScraper()
-thread_manager = ThreadManager()
+forum_manager = ForumManager()
 
 # ============================================
 # FUNCIONES AUXILIARES
@@ -452,8 +447,8 @@ def get_element_emoji(element: str) -> str:
     }
     return elements.get(element, elements.get(element.lower(), '🔮'))
 
-async def create_banner_thread(channel, banner, status):
-    """Crea un hilo (thread) para un banner con todas sus imágenes"""
+async def create_forum_post(forum_channel, banner, status):
+    """Crea una publicación en un canal de foro para un banner"""
     
     # Emoji según el tipo
     type_emoji = {
@@ -464,123 +459,126 @@ async def create_banner_thread(channel, banner, status):
     
     status_emoji = "🔴" if status == "actual" else "🟡"
     
-    # Crear el mensaje inicial del hilo
+    # Título de la publicación
     thread_name = f"{status_emoji} {type_emoji} {banner.name[:90]}"  # Máximo 100 chars
     
-    # Mensaje principal con información del banner
+    # Contenido inicial de la publicación
     content = f"""# {status_emoji} **{banner.name}**
 
+## 📋 Información General
 **Tipo:** {banner.banner_type}
 **⏳ Tiempo restante:** {banner.time_remaining}
-
-📅 **Duración:** {banner.duration_text.replace('Event Duration', '')}
+**📅 Duración:** {banner.duration_text.replace('Event Duration', '')}
 
 """
     
     # Añadir personajes destacados
     if banner.featured_5star_char or banner.featured_4star_char:
-        content += "\n## ✨ Personajes Destacados\n"
+        content += "## ✨ Personajes Destacados\n\n"
         
         if banner.featured_5star_char:
-            content += "\n**★5**\n"
+            content += "### ★5\n"
             for char in banner.featured_5star_char:
                 element_emoji = get_element_emoji(char.get('element', 'Unknown'))
                 content += f"{element_emoji} **{char['name']}**\n"
+            content += "\n"
         
         if banner.featured_4star_char:
-            content += "\n**★4**\n"
+            content += "### ★4\n"
             for char in banner.featured_4star_char:
                 element_emoji = get_element_emoji(char.get('element', 'Unknown'))
                 content += f"{element_emoji} **{char['name']}**\n"
+            content += "\n"
     
     # Añadir conos de luz destacados
     if banner.featured_5star_cone or banner.featured_4star_cone:
-        content += "\n## 💫 Conos de Luz Destacados\n"
+        content += "## 💫 Conos de Luz Destacados\n\n"
         
         if banner.featured_5star_cone:
-            content += "\n**★5**\n"
+            content += "### ★5\n"
             for cone in banner.featured_5star_cone:
                 content += f"💫 **{cone['name']}**\n"
+            content += "\n"
         
         if banner.featured_4star_cone:
-            content += "\n**★4**\n"
+            content += "### ★4\n"
             for cone in banner.featured_4star_cone:
                 content += f"📿 **{cone['name']}**\n"
+            content += "\n"
     
-    # Enviar mensaje principal
-    main_msg = await channel.send(content)
-    
-    # Crear el hilo
-    thread = await main_msg.create_thread(
+    # Crear la publicación en el foro
+    # Los canales de foro usan create_thread sin necesidad de mensaje base
+    thread = await forum_channel.create_thread(
         name=thread_name,
+        content=content,
         auto_archive_duration=10080  # 7 días
     )
+    
+    # Ahora thread es el hilo creado, podemos enviar mensajes adicionales
+    thread_obj = thread[0] if isinstance(thread, tuple) else thread
     
     # Enviar todas las imágenes como mensajes en el hilo
     all_images = []
     
     # Recopilar todas las URLs de imágenes
     for char in banner.characters_data:
-        if char.get('image') and char['image'] not in all_images:
+        if char.get('image') and char['image'] not in all_images and char['image'] != scraper.default_image:
             all_images.append(char['image'])
     
     for cone in banner.cones_data:
-        if cone.get('image') and cone['image'] not in all_images:
+        if cone.get('image') and cone['image'] not in all_images and cone['image'] != scraper.default_image:
             all_images.append(cone['image'])
     
-    # Enviar imágenes en lotes
+    # Enviar imágenes
     if all_images:
-        await thread.send("## 🖼️ **Galería de Imágenes**")
+        await thread_obj.send("## 🖼️ **Galería de Imágenes**")
         
-        # Enviar imágenes en grupos de 5 para no saturar
-        for i in range(0, len(all_images), 5):
-            batch = all_images[i:i+5]
-            img_content = ""
-            for idx, img_url in enumerate(batch):
-                img_content += f"[Imagen {i+idx+1}]({img_url})\n"
-            
-            if img_content:
-                await thread.send(img_content)
-            await asyncio.sleep(1)
+        # Enviar cada imagen como un mensaje individual (mejor para vista previa)
+        for img_url in all_images[:10]:  # Máximo 10 imágenes
+            try:
+                await thread_obj.send(img_url)
+                await asyncio.sleep(0.5)
+            except:
+                pass
     
     # Estadísticas finales
     total_5star = len(banner.featured_5star_char) + len(banner.featured_5star_cone)
     total_4star = len(banner.featured_4star_char) + len(banner.featured_4star_cone)
     
-    await thread.send(f"✨ **{total_5star} ★5**  |  ⭐ **{total_4star} ★4**")
+    await thread_obj.send(f"✨ **{total_5star} ★5**  |  ⭐ **{total_4star} ★4**")
     
-    return thread, main_msg
+    return thread_obj
 
 # ============================================
 # VARIABLES DE ENTORNO
 # ============================================
 logger.info("=" * 60)
-logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - HILOS POR BANNER")
+logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - FORO POR BANNER")
 logger.info("=" * 60)
 
 TOKEN = os.environ.get('DISCORD_TOKEN')
-CHANNEL_ID_ACTUAL = os.environ.get('DISCORD_CHANNEL_ACTUAL')
-CHANNEL_ID_PROXIMO = os.environ.get('DISCORD_CHANNEL_PROXIMO')
+FORUM_CHANNEL_ID_ACTUAL = os.environ.get('FORUM_CHANNEL_ACTUAL')
+FORUM_CHANNEL_ID_PROXIMO = os.environ.get('FORUM_CHANNEL_PROXIMO')
 
 logger.info(f"🔑 DISCORD_TOKEN: {'✅ ENCONTRADO' if TOKEN else '❌ NO ENCONTRADO'}")
-logger.info(f"📢 Canal ACTUAL: {'✅ ' + CHANNEL_ID_ACTUAL if CHANNEL_ID_ACTUAL else '❌ NO CONFIGURADO'}")
-logger.info(f"📢 Canal PRÓXIMO: {'✅ ' + CHANNEL_ID_PROXIMO if CHANNEL_ID_PROXIMO else '❌ NO CONFIGURADO'}")
+logger.info(f"📢 Canal FORO ACTUAL: {'✅ ' + FORUM_CHANNEL_ID_ACTUAL if FORUM_CHANNEL_ID_ACTUAL else '❌ NO CONFIGURADO'}")
+logger.info(f"📢 Canal FORO PRÓXIMO: {'✅ ' + FORUM_CHANNEL_ID_PROXIMO if FORUM_CHANNEL_ID_PROXIMO else '❌ NO CONFIGURADO'}")
 
-TARGET_CHANNEL_ACTUAL = None
-if CHANNEL_ID_ACTUAL:
+TARGET_FORUM_ACTUAL = None
+if FORUM_CHANNEL_ID_ACTUAL:
     try:
-        TARGET_CHANNEL_ACTUAL = int(CHANNEL_ID_ACTUAL.strip())
-        logger.info(f"✅ Canal actual: {TARGET_CHANNEL_ACTUAL}")
+        TARGET_FORUM_ACTUAL = int(FORUM_CHANNEL_ID_ACTUAL.strip())
+        logger.info(f"✅ Foro actual: {TARGET_FORUM_ACTUAL}")
     except ValueError:
-        logger.error(f"❌ DISCORD_CHANNEL_ACTUAL no es válido: {CHANNEL_ID_ACTUAL}")
+        logger.error(f"❌ FORUM_CHANNEL_ACTUAL no es válido: {FORUM_CHANNEL_ID_ACTUAL}")
 
-TARGET_CHANNEL_PROXIMO = None
-if CHANNEL_ID_PROXIMO:
+TARGET_FORUM_PROXIMO = None
+if FORUM_CHANNEL_ID_PROXIMO:
     try:
-        TARGET_CHANNEL_PROXIMO = int(CHANNEL_ID_PROXIMO.strip())
-        logger.info(f"✅ Canal próximo: {TARGET_CHANNEL_PROXIMO}")
+        TARGET_FORUM_PROXIMO = int(FORUM_CHANNEL_ID_PROXIMO.strip())
+        logger.info(f"✅ Foro próximo: {TARGET_FORUM_PROXIMO}")
     except ValueError:
-        logger.error(f"❌ DISCORD_CHANNEL_PROXIMO no es válido: {CHANNEL_ID_PROXIMO}")
+        logger.error(f"❌ FORUM_CHANNEL_PROXIMO no es válido: {FORUM_CHANNEL_ID_PROXIMO}")
 
 if not TOKEN:
     logger.error("❌ ERROR CRÍTICO: No hay token de Discord")
@@ -600,21 +598,21 @@ async def on_ready():
         )
     )
     
-    if TARGET_CHANNEL_ACTUAL or TARGET_CHANNEL_PROXIMO:
-        daily_banners.start()
+    if TARGET_FORUM_ACTUAL or TARGET_FORUM_PROXIMO:
+        daily_forum_posts.start()
         logger.info(f"📅 Tarea diaria iniciada")
 
 @tasks.loop(hours=24)
-async def daily_banners():
-    """Actualiza los banners cada 24 horas (creando/actualizando hilos)"""
-    await update_banner_threads()
+async def daily_forum_posts():
+    """Actualiza las publicaciones del foro cada 24 horas"""
+    await update_forum_posts()
 
-@daily_banners.before_loop
-async def before_daily_banners():
+@daily_forum_posts.before_loop
+async def before_daily_forum_posts():
     await bot.wait_until_ready()
 
-async def update_banner_threads():
-    """Actualiza los hilos de banners"""
+async def update_forum_posts():
+    """Actualiza las publicaciones del foro"""
     
     all_banners = scraper.get_banners()
     
@@ -637,41 +635,48 @@ async def update_banner_threads():
     
     logger.info(f"Clasificación: {len(banners_actuales)} actuales, {len(banners_proximos)} próximos")
     
-    if TARGET_CHANNEL_ACTUAL:
-        await update_channel_threads(TARGET_CHANNEL_ACTUAL, banners_actuales, "actual")
+    if TARGET_FORUM_ACTUAL:
+        await update_forum_channel(TARGET_FORUM_ACTUAL, banners_actuales, "actual")
     
-    if TARGET_CHANNEL_PROXIMO:
-        await update_channel_threads(TARGET_CHANNEL_PROXIMO, banners_proximos, "proximo")
+    if TARGET_FORUM_PROXIMO:
+        await update_forum_channel(TARGET_FORUM_PROXIMO, banners_proximos, "proximo")
 
-async def update_channel_threads(channel_id, banners, status):
-    """Actualiza los hilos de un canal específico"""
+async def update_forum_channel(channel_id, banners, status):
+    """Actualiza las publicaciones de un canal de foro específico"""
     
     channel = bot.get_channel(channel_id)
     if not channel:
         logger.error(f"❌ No se encontró el canal {channel_id}")
         return
     
+    # Verificar que es un canal de foro
+    if not isinstance(channel, discord.ForumChannel):
+        logger.error(f"❌ El canal {channel_id} no es un foro (es {type(channel).__name__})")
+        return
+    
     try:
-        # Obtener hilos activos en el canal
+        # Obtener hilos activos en el foro
         active_threads = []
+        async for thread in channel.archived_threads(limit=100):
+            active_threads.append(thread)
         async for thread in channel.threads:
             active_threads.append(thread)
         
-        logger.info(f"Canal {channel.name}: {len(active_threads)} hilos activos")
+        logger.info(f"Foro {channel.name}: {len(active_threads)} hilos activos")
         
         # Mapear hilos existentes por ID de banner
-        existing_threads = {}
+        existing_posts = {}
         for thread in active_threads:
             for banner in banners:
                 if banner.name in thread.name:
-                    existing_threads[banner.banner_id] = thread
+                    existing_posts[banner.banner_id] = thread
                     break
         
-        # Crear o actualizar hilos
+        # Crear o actualizar publicaciones
         for banner in banners:
-            if banner.banner_id in existing_threads:
-                # Actualizar hilo existente - cambiar nombre si es necesario
-                thread = existing_threads[banner.banner_id]
+            if banner.banner_id in existing_posts:
+                # Actualizar título del hilo si es necesario
+                thread = existing_posts[banner.banner_id]
                 status_emoji = "🔴" if status == "actual" else "🟡"
                 type_emoji = {
                     "Personaje": "🦸",
@@ -694,34 +699,34 @@ async def update_channel_threads(channel_id, banners, status):
                 except:
                     pass
             else:
-                # Crear nuevo hilo
+                # Crear nueva publicación en el foro
                 try:
-                    thread, main_msg = await create_banner_thread(channel, banner, status)
-                    thread_manager.set_thread_id(channel_id, banner.banner_id, thread.id, main_msg.id)
-                    logger.info(f"✅ Hilo creado: {banner.name}")
+                    thread = await create_forum_post(channel, banner, status)
+                    forum_manager.set_post_id(channel_id, banner.banner_id, thread.id)
+                    logger.info(f"✅ Publicación creada: {banner.name}")
                 except Exception as e:
-                    logger.error(f"Error creando hilo {banner.name}: {e}")
+                    logger.error(f"Error creando publicación {banner.name}: {e}")
             
             await asyncio.sleep(1)
         
-        # Archivar hilos de banners que ya no existen
+        # Archivar publicaciones de banners que ya no existen
         current_ids = {b.banner_id for b in banners}
         for thread in active_threads:
             thread_id = None
-            for banner_id, existing_thread in existing_threads.items():
+            for banner_id, existing_thread in existing_posts.items():
                 if existing_thread.id == thread.id and banner_id not in current_ids:
                     try:
-                        await thread.edit(archived=True)
+                        await thread.edit(archived=True, locked=True)
                         logger.info(f"📦 Hilo archivado (banner ya no existe)")
-                        thread_manager.remove_thread(channel_id, banner_id)
+                        forum_manager.remove_post(channel_id, banner_id)
                     except Exception as e:
                         logger.error(f"Error archivando hilo: {e}")
                     break
         
-        logger.info(f"✅ Canal {channel.name} actualizado con {len(banners)} hilos")
+        logger.info(f"✅ Foro {channel.name} actualizado con {len(banners)} publicaciones")
         
     except Exception as e:
-        logger.error(f"❌ Error actualizando canal {channel.name}: {e}")
+        logger.error(f"❌ Error actualizando foro {channel.name}: {e}")
 
 @bot.command(name='banners', aliases=['warps', 'warp'])
 async def banners_command(ctx):
@@ -774,48 +779,61 @@ async def banners_command(ctx):
                 }.get(banner.banner_type, "🎯")
                 response += f"{type_emoji} **{banner.name}** - {banner.time_remaining}\n"
         
-        await ctx.send(response)
+        # Dividir en mensajes más pequeños si es necesario
+        if len(response) > 2000:
+            parts = [response[i:i+1900] for i in range(0, len(response), 1900)]
+            for part in parts:
+                await ctx.send(part)
+        else:
+            await ctx.send(response)
         
     except Exception as e:
         logger.error(f"Error en comando banners: {e}")
         await loading_msg.edit(content=f"❌ **Error:** {str(e)[:200]}")
 
-@bot.command(name='threads_refresh')
+@bot.command(name='refresh_forum')
 @commands.has_permissions(administrator=True)
-async def threads_refresh(ctx):
-    """Fuerza actualización de hilos (solo admins)"""
-    await ctx.send("🔄 **Forzando actualización de hilos...**")
-    await update_banner_threads()
+async def refresh_forum(ctx):
+    """Fuerza actualización del foro (solo admins)"""
+    await ctx.send("🔄 **Forzando actualización del foro...**")
+    await update_forum_posts()
 
-@bot.command(name='reset_threads')
+@bot.command(name='reset_forum')
 @commands.has_permissions(administrator=True)
-async def reset_threads(ctx, channel_type: str = None):
-    """Resetea los hilos de un canal (solo admins)"""
+async def reset_forum(ctx, channel_type: str = None):
+    """Resetea las publicaciones de un foro (solo admins)"""
     if not channel_type or channel_type not in ['actual', 'proximo']:
-        await ctx.send("❌ **Usa:** `!reset_threads actual` o `!reset_threads proximo`")
+        await ctx.send("❌ **Usa:** `!reset_forum actual` o `!reset_forum proximo`")
         return
     
-    channel_id = TARGET_CHANNEL_ACTUAL if channel_type == 'actual' else TARGET_CHANNEL_PROXIMO
+    channel_id = TARGET_FORUM_ACTUAL if channel_type == 'actual' else TARGET_FORUM_PROXIMO
     if not channel_id:
-        await ctx.send(f"❌ **Canal {channel_type} no configurado**")
+        await ctx.send(f"❌ **Foro {channel_type} no configurado**")
         return
     
     channel = bot.get_channel(channel_id)
     if not channel:
-        await ctx.send(f"❌ **No se encontró el canal**")
+        await ctx.send(f"❌ **No se encontró el foro**")
         return
     
-    # Archivar todos los hilos del canal
-    async for thread in channel.threads:
+    # Archivar todos los hilos del foro
+    async for thread in channel.archived_threads(limit=100):
         try:
-            await thread.edit(archived=True)
+            await thread.edit(archived=True, locked=True)
             await asyncio.sleep(0.5)
         except:
             pass
     
-    thread_manager.clear_channel(channel_id)
+    async for thread in channel.threads:
+        try:
+            await thread.edit(archived=True, locked=True)
+            await asyncio.sleep(0.5)
+        except:
+            pass
     
-    await ctx.send(f"✅ **Hilos del canal {channel_type} archivados. Se recrearán en la próxima actualización.**")
+    forum_manager.clear_channel(channel_id)
+    
+    await ctx.send(f"✅ **Foro {channel_type} reseteado. Las publicaciones se recrearán en la próxima actualización.**")
 
 @bot.command(name='stats')
 async def banner_stats(ctx):
