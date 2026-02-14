@@ -9,19 +9,18 @@ import asyncio
 import logging
 import sys
 
-# Configurar logging para ver todo en Railway
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
+# Configurar logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Configuración del bot
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
-scraper = BannerScraper()
+
+# ============================================
+# CLASE BANNER
+# ============================================
 class Banner:
     def __init__(self, name: str, banner_type: str, time_remaining: str, 
                  featured_5star: list, featured_4star: list, 
@@ -34,11 +33,13 @@ class Banner:
         self.light_cones = light_cones
         self.duration_text = duration_text
 
+# ============================================
+# CLASE BANNER SCRAPER
+# ============================================
 class BannerScraper:
     """Clase para hacer scraping de los banners desde la página principal de Prydwen"""
     
     def __init__(self):
-        # ¡URL CORREGIDA! Usamos la página principal
         self.url = "https://www.prydwen.gg/star-rail/"
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -48,55 +49,122 @@ class BannerScraper:
         self.session = requests.Session()
         self.session.headers.update(self.headers)
     
+    def extract_image_url(self, img_tag) -> str:
+        """Extrae la URL de la imagen"""
+        if not img_tag:
+            return None
+        
+        srcset = img_tag.get('srcset', '')
+        if srcset:
+            urls = srcset.split(',')
+            if urls:
+                last_url = urls[-1].strip().split(' ')[0]
+                if last_url.startswith('http'):
+                    return last_url
+                return f"https://www.prydwen.gg{last_url}"
+        
+        src = img_tag.get('src', '')
+        if src:
+            if src.startswith('http'):
+                return src
+            return f"https://www.prydwen.gg{src}"
+        
+        return None
+    
+    def parse_character_card(self, card) -> dict:
+        """Parsea una tarjeta de personaje"""
+        try:
+            name = "Unknown"
+            a_tag = card.find('a')
+            if a_tag and a_tag.get('href'):
+                href = a_tag.get('href', '')
+                name = href.split('/')[-1].replace('-', ' ').title()
+            
+            img_tag = card.find('img')
+            image_url = self.extract_image_url(img_tag)
+            
+            element = "Unknown"
+            element_tag = card.find('span', class_='floating-element')
+            if element_tag:
+                element_img = element_tag.find('img')
+                if element_img and element_img.get('alt'):
+                    element = element_img.get('alt')
+            
+            card_html = str(card)
+            rarity = 5 if 'rarity-5' in card_html or 'rar-5' in card_html else 4
+            
+            return {
+                'name': name,
+                'image': image_url,
+                'element': element,
+                'rarity': rarity
+            }
+        except Exception:
+            return None
+    
+    def parse_light_cone(self, cone_div) -> dict:
+        """Parsea un cono de luz"""
+        try:
+            name_tag = cone_div.find('span', class_='hsr-set-name')
+            name = name_tag.text.strip() if name_tag else "Unknown"
+            
+            img_tag = cone_div.find('img')
+            image_url = self.extract_image_url(img_tag)
+            
+            cone_html = str(cone_div)
+            rarity = 5 if 'rarity-5' in cone_html else 4
+            
+            return {
+                'name': name,
+                'image': image_url,
+                'rarity': rarity
+            }
+        except Exception:
+            return None
+    
     def extract_banners_from_html(self, soup):
-        """Extrae los banners del HTML basado en la estructura real"""
+        """Extrae los banners del HTML"""
         banners = []
         
-        # Buscar todas las secciones de eventos que contienen banners
-        # En la página, los banners están dentro de contenedores con información de duración
-        event_sections = soup.find_all('div', string=re.compile(r'Event Duration:', re.I))
+        # Buscar secciones de banners (basado en el HTML que viste)
+        banner_sections = soup.find_all('div', class_=re.compile('banner|event|warp', re.I))
         
-        for section in event_sections:
+        for section in banner_sections:
             try:
-                # Encontrar el contenedor padre que agrupa toda la info del banner
-                parent = section.find_parent(['div', 'section'])
-                if not parent:
-                    continue
+                # Buscar duración
+                duration_text = ""
+                duration_tag = section.find(string=re.compile('Event Duration', re.I))
+                if duration_tag:
+                    duration_text = duration_tag.parent.get_text() if duration_tag.parent else ""
                 
-                # Extraer duración
-                duration_text = section.parent.get_text() if section.parent else ""
+                # Nombre del banner
+                name = "Banner"
+                name_tag = section.find(['h2', 'h3', 'h4'], class_=re.compile('name|title', re.I))
+                if name_tag:
+                    name = name_tag.text.strip()
                 
-                # Buscar nombre del banner (usando el personaje o cono destacado)
-                name = "Banner de Personaje"
-                featured_char = parent.find('strong', string=re.compile(r'Featured 5★ character', re.I))
-                if featured_char:
-                    # Buscar el nombre del personaje
-                    char_name_tag = featured_char.find_next(['a', 'strong'])
-                    if char_name_tag:
-                        name = char_name_tag.get_text().strip()
-                
-                # Determinar tipo
+                # Tipo
                 banner_type = "Personaje"
-                if "Light Cone" in parent.get_text():
+                if "Light Cone" in str(section):
                     banner_type = "Cono de Luz"
                 
-                # Buscar tiempo restante (difícil de extraer directamente, usamos la duración)
+                # Tiempo restante (difícil de extraer)
                 time_remaining = "Consultar web"
                 
-                # Crear banner con la información disponible
-                banner = Banner(
-                    name=name,
-                    banner_type=banner_type,
-                    time_remaining=time_remaining,
-                    featured_5star=[],  # Podríamos extraer más detalles si es necesario
-                    featured_4star=[],
-                    light_cones=[],
-                    duration_text=duration_text
-                )
-                banners.append(banner)
-                
+                if name and duration_text:
+                    banner = Banner(
+                        name=name,
+                        banner_type=banner_type,
+                        time_remaining=time_remaining,
+                        featured_5star=[],
+                        featured_4star=[],
+                        light_cones=[],
+                        duration_text=duration_text
+                    )
+                    banners.append(banner)
+                    
             except Exception as e:
-                logger.error(f"Error extrayendo banner: {e}")
+                logger.error(f"Error en sección: {e}")
                 continue
         
         return banners
@@ -109,15 +177,13 @@ class BannerScraper:
             response.raise_for_status()
             
             soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Intentar extraer banners con el método específico
             banners = self.extract_banners_from_html(soup)
             
             if banners:
                 logger.info(f"✅ Encontrados {len(banners)} banners")
                 return banners
             else:
-                logger.warning("No se encontraron banners con el método específico, usando respaldo")
+                logger.warning("Usando datos manuales de respaldo")
                 return self.get_banners_manual()
                 
         except Exception as e:
@@ -125,7 +191,7 @@ class BannerScraper:
             return self.get_banners_manual()
     
     def get_banners_manual(self):
-        """Datos manuales de respaldo (actualizados con la info de la página)"""
+        """Datos manuales de respaldo"""
         return [
             Banner(
                 name="Black Swan & Kafka",
@@ -198,15 +264,19 @@ class BannerScraper:
             )
         ]
 
+# ============================================
+# INSTANCIA GLOBAL DEL SCRAPER (¡IMPORTANTE!)
+# ============================================
+scraper = BannerScraper()  # <--- ESTA LÍNEA ES CRUCIAL
+
+# ============================================
+# FUNCIONES AUXILIARES
+# ============================================
 def get_element_emoji(element: str) -> str:
     """Devuelve el emoji del elemento"""
     elements = {
-        'Physical': '💪',
-        'Fire': '🔥',
-        'Ice': '❄️',
-        'Lightning': '⚡',
-        'Wind': '💨',
-        'Quantum': '⚛️',
+        'Physical': '💪', 'Fire': '🔥', 'Ice': '❄️',
+        'Lightning': '⚡', 'Wind': '💨', 'Quantum': '⚛️',
         'Imaginary': '✨'
     }
     return elements.get(element, '🔮')
@@ -214,245 +284,129 @@ def get_element_emoji(element: str) -> str:
 def create_banner_embed(banner: Banner) -> discord.Embed:
     """Crea un embed para un banner"""
     
-    # Color según tipo
-    if banner.banner_type == "Personaje":
-        color = discord.Color.from_rgb(255, 215, 0)  # Dorado
-        emoji = "🦸"
-    elif banner.banner_type == "Cono de Luz":
-        color = discord.Color.from_rgb(147, 112, 219)  # Púrpura
-        emoji = "⚔️"
-    else:
-        color = discord.Color.blue()
-        emoji = "🎁"
+    color = discord.Color.from_rgb(255, 215, 0) if banner.banner_type == "Personaje" else discord.Color.purple()
+    emoji = "🦸" if banner.banner_type == "Personaje" else "⚔️"
     
     embed = discord.Embed(
         title=f"{emoji} {banner.name}",
-        description=f"**Tipo:** {banner.banner_type}\n**⏳ Tiempo restante:** {banner.time_remaining}",
+        description=f"**Tipo:** {banner.banner_type}\n**⏳ Tiempo:** {banner.time_remaining}",
         color=color,
         timestamp=datetime.now()
     )
     
-    # Duración del evento
     if banner.duration_text:
-        # Limpiar el texto de duración
-        clean_duration = banner.duration_text.replace('Event Duration', 'Duración').replace('server time', 'hora del servidor')
-        embed.add_field(
-            name="📅 Duración",
-            value=clean_duration,
-            inline=False
-        )
+        embed.add_field(name="📅 Duración", value=banner.duration_text, inline=False)
     
-    # Personajes 5★
     if banner.featured_5star:
-        chars_text = ""
-        for char in banner.featured_5star[:4]:
-            element_emoji = get_element_emoji(char['element'])
-            chars_text += f"{element_emoji} **{char['name']}** (★5)\n"
-        
-        if chars_text:
-            embed.add_field(name="✨ Personajes 5★", value=chars_text, inline=True)
+        chars = "\n".join([f"{get_element_emoji(c['element'])} **{c['name']}** (★5)" for c in banner.featured_5star[:4]])
+        embed.add_field(name="✨ Personajes 5★", value=chars, inline=True)
     
-    # Personajes 4★
     if banner.featured_4star:
-        chars_text = ""
-        for char in banner.featured_4star[:4]:
-            element_emoji = get_element_emoji(char['element'])
-            chars_text += f"{element_emoji} **{char['name']}** (★4)\n"
-        
-        if chars_text:
-            embed.add_field(name="⭐ Personajes 4★", value=chars_text, inline=True)
+        chars = "\n".join([f"{get_element_emoji(c['element'])} **{c['name']}** (★4)" for c in banner.featured_4star[:4]])
+        embed.add_field(name="⭐ Personajes 4★", value=chars, inline=True)
     
-    # Conos de luz
     if banner.light_cones:
-        cones_text = ""
-        for cone in banner.light_cones[:3]:
-            rarity_star = "★5" if cone['rarity'] == 5 else "★4"
-            cones_text += f"• **{cone['name']}** ({rarity_star})\n"
-        
-        if cones_text:
-            embed.add_field(name="💫 Conos de Luz", value=cones_text, inline=False)
+        cones = "\n".join([f"• **{c['name']}** ({'★5' if c['rarity']==5 else '★4'})" for c in banner.light_cones[:3]])
+        embed.add_field(name="💫 Conos de Luz", value=cones, inline=False)
     
     # Thumbnail
+    thumbnail = None
     if banner.featured_5star and banner.featured_5star[0].get('image'):
-        embed.set_thumbnail(url=banner.featured_5star[0]['image'])
+        thumbnail = banner.featured_5star[0]['image']
     elif banner.light_cones and banner.light_cones[0].get('image'):
-        embed.set_thumbnail(url=banner.light_cones[0]['image'])
+        thumbnail = banner.light_cones[0]['image']
     
-    embed.set_footer(text="Datos de Prydwen.gg • Actualizado diariamente")
+    if thumbnail:
+        embed.set_thumbnail(url=thumbnail)
     
+    embed.set_footer(text="Datos de Prydwen.gg")
     return embed
 
+# ============================================
+# VARIABLES DE ENTORNO
+# ============================================
+logger.info("=" * 50)
+logger.info("INICIANDO BOT DE HONKAI STAR RAIL")
+logger.info("=" * 50)
+
+TOKEN = os.environ.get('DISCORD_TOKEN')
+CHANNEL_ID_STR = os.environ.get('DISCORD_CHANNEL_ID')
+
+logger.info(f"DISCORD_TOKEN: {'✅' if TOKEN else '❌'}")
+logger.info(f"DISCORD_CHANNEL_ID: {'✅' if CHANNEL_ID_STR else '❌'}")
+
+TARGET_CHANNEL_ID = None
+if CHANNEL_ID_STR:
+    try:
+        TARGET_CHANNEL_ID = int(CHANNEL_ID_STR.strip())
+        logger.info(f"✅ Canal objetivo: {TARGET_CHANNEL_ID}")
+    except ValueError:
+        logger.error(f"❌ Channel ID inválido")
+
+if not TOKEN:
+    logger.error("❌ No hay token. Saliendo...")
+    sys.exit(1)
+
+# ============================================
+# EVENTOS Y COMANDOS DEL BOT
+# ============================================
 @bot.event
 async def on_ready():
-    logger.info(f'✅ {bot.user} ha conectado a Discord!')
-    logger.info(f'📊 ID del bot: {bot.user.id}')
+    logger.info(f'✅ {bot.user} ha conectado!')
+    await bot.change_presence(activity=discord.Game(name="!banners | HSR"))
     
-    # Estado personalizado
-    await bot.change_presence(
-        activity=discord.Activity(
-            type=discord.ActivityType.watching,
-            name="los banners de HSR | !banners"
-        )
-    )
-    
-    # Iniciar tarea diaria si hay canal configurado
     if TARGET_CHANNEL_ID:
         daily_banners.start()
-        logger.info(f"📅 Tarea diaria iniciada para el canal {TARGET_CHANNEL_ID}")
 
 @tasks.loop(hours=24)
 async def daily_banners():
-    """Publica banners cada 24 horas"""
     await publish_banners()
 
-@daily_banners.before_loop
-async def before_daily_banners():
-    """Espera a que el bot esté listo"""
-    await bot.wait_until_ready()
-
 async def publish_banners():
-    """Publica banners en el canal configurado"""
     if not TARGET_CHANNEL_ID:
-        logger.warning("⚠️ No hay canal configurado para publicaciones automáticas")
         return
-    
     channel = bot.get_channel(TARGET_CHANNEL_ID)
-    if not channel:
-        logger.error(f"❌ No se encontró el canal {TARGET_CHANNEL_ID}")
-        return
-    
-    await send_banners(channel)
+    if channel:
+        await send_banners(channel)
 
 async def send_banners(channel):
-    """Envía los banners a un canal"""
-    
-    loading_msg = await channel.send("🔄 Obteniendo información de los banners...")
+    loading = await channel.send("🔄 Obteniendo banners...")
     
     try:
         banners = scraper.get_banners()
         
         if not banners:
-            await loading_msg.edit(content="❌ No se pudieron obtener los banners. Intenta más tarde.")
+            await loading.edit(content="❌ No se encontraron banners")
             return
         
-        await loading_msg.delete()
+        await loading.delete()
         
-        # Enviar cada banner
         for banner in banners:
             embed = create_banner_embed(banner)
             await channel.send(embed=embed)
             await asyncio.sleep(1)
         
-        # Mensaje de resumen
-        await channel.send(f"✅ Mostrando **{len(banners)}** banners activos.\n📅 Próxima actualización automática en 24h.")
-        
-        logger.info(f"✅ Banners enviados a {channel.name}")
+        await channel.send(f"✅ Mostrando {len(banners)} banners")
         
     except Exception as e:
-        logger.error(f"❌ Error enviando banners: {e}")
-        await loading_msg.edit(content=f"❌ Error: {str(e)[:100]}")
+        logger.error(f"Error: {e}")
+        await loading.edit(content=f"❌ Error: {str(e)[:100]}")
 
 @bot.command(name='banners')
 async def banners_command(ctx):
-    """Comando para mostrar banners"""
     await send_banners(ctx.channel)
-
-@bot.command(name='banner')
-async def banner_info(ctx, *, banner_name: str = None):
-    """Muestra información de un banner específico"""
-    if not banner_name:
-        await ctx.send("❌ Usa: `!banner nombre_del_banner`")
-        return
-    
-    banners = scraper.get_banners()
-    
-    found_banners = [b for b in banners if banner_name.lower() in b.name.lower()]
-    
-    if not found_banners:
-        # Buscar por personaje
-        for b in banners:
-            for char in b.featured_5star + b.featured_4star:
-                if banner_name.lower() in char['name'].lower():
-                    found_banners.append(b)
-                    break
-    
-    if not found_banners:
-        await ctx.send(f"❌ No se encontró '{banner_name}'")
-        return
-    
-    for banner in found_banners[:2]:  # Máximo 2 banners
-        embed = create_banner_embed(banner)
-        await ctx.send(embed=embed)
 
 @bot.command(name='refresh')
 @commands.has_permissions(administrator=True)
 async def refresh_banners(ctx):
-    """Fuerza actualización (solo admins)"""
-    await ctx.send("🔄 Actualizando banners...")
+    await ctx.send("🔄 Actualizando...")
     await send_banners(ctx.channel)
 
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.CommandNotFound):
-        await ctx.send("❌ Comando no encontrado. Usa `!banners`")
-    elif isinstance(error, commands.MissingPermissions):
-        await ctx.send("❌ No tienes permiso")
-    else:
-        logger.error(f"Error: {error}")
-        await ctx.send(f"❌ Error: {str(error)[:100]}")
-
 # ============================================
-# CONFIGURACIÓN DE VARIABLES DE ENTORNO
+# INICIAR BOT
 # ============================================
-
-logger.info("=" * 50)
-logger.info("INICIANDO BOT DE HONKAI STAR RAIL")
-logger.info("=" * 50)
-
-# Leer variables de entorno
-TOKEN = os.environ.get('DISCORD_TOKEN')
-CHANNEL_ID_STR = os.environ.get('DISCORD_CHANNEL_ID')
-
-# Diagnóstico
-logger.info("🔍 DIAGNÓSTICO DE VARIABLES:")
-logger.info(f"DISCORD_TOKEN: {'✅ ENCONTRADO' if TOKEN else '❌ NO ENCONTRADO'}")
-if TOKEN:
-    logger.info(f"  Longitud: {len(TOKEN)} caracteres")
-    logger.info(f"  Primeros 5 chars: {TOKEN[:5]}...")
-else:
-    logger.error("  ⚠️  El token es necesario para que el bot funcione")
-
-logger.info(f"DISCORD_CHANNEL_ID: {'✅ ENCONTRADO' if CHANNEL_ID_STR else '❌ NO ENCONTRADO'}")
-if CHANNEL_ID_STR:
-    logger.info(f"  Valor: {CHANNEL_ID_STR}")
-logger.info("=" * 50)
-
-# Convertir channel_id a entero si existe
-TARGET_CHANNEL_ID = None
-if CHANNEL_ID_STR:
-    try:
-        TARGET_CHANNEL_ID = int(CHANNEL_ID_STR.strip())
-        logger.info(f"✅ Canal objetivo configurado: {TARGET_CHANNEL_ID}")
-    except ValueError:
-        logger.error(f"❌ DISCORD_CHANNEL_ID no es un número válido: {CHANNEL_ID_STR}")
-        TARGET_CHANNEL_ID = None
-
-# Ejecutar el bot
 if __name__ == "__main__":
-    if not TOKEN:
-        logger.error("❌ ERROR CRÍTICO: No hay token de Discord")
-        logger.error("📝 Solución: Configura DISCORD_TOKEN en Railway (Variables → New Variable)")
-        logger.error("   Nombre: DISCORD_TOKEN")
-        logger.error("   Valor: [tu token de Discord]")
-        sys.exit(1)
-    
     try:
-        logger.info("🚀 Iniciando bot...")
-        bot.run(TOKEN, log_handler=None)  # log_handler=None para evitar duplicados
-    except discord.LoginFailure:
-        logger.error("❌ ERROR: Token inválido")
-        logger.error("📝 Solución: Verifica que el token en Railway sea correcto")
-        sys.exit(1)
+        bot.run(TOKEN)
     except Exception as e:
-        logger.error(f"❌ Error iniciando bot: {e}")
-        sys.exit(1)
+        logger.error(f"Error: {e}")
