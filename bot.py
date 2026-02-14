@@ -27,21 +27,23 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # ============================================
 class Banner:
     def __init__(self, name: str, banner_type: str, time_remaining: str, 
-                 featured_5star: list, featured_4star: list, 
-                 light_cones: list, duration_text: str = ""):
+                 featured_5star_char: list, featured_4star_char: list, 
+                 featured_5star_cone: list, featured_4star_cone: list,
+                 duration_text: str = ""):
         self.name = name
         self.banner_type = banner_type
         self.time_remaining = time_remaining
-        self.featured_5star = featured_5star if featured_5star else []
-        self.featured_4star = featured_4star if featured_4star else []
-        self.light_cones = light_cones if light_cones else []
+        self.featured_5star_char = featured_5star_char if featured_5star_char else []
+        self.featured_4star_char = featured_4star_char if featured_4star_char else []
+        self.featured_5star_cone = featured_5star_cone if featured_5star_cone else []
+        self.featured_4star_cone = featured_4star_cone if featured_4star_cone else []
         self.duration_text = duration_text
 
 # ============================================
 # CLASE BANNER SCRAPER
 # ============================================
 class BannerScraper:
-    """Clase para hacer scraping de los banners desde la página principal de Prydwen"""
+    """Clase para hacer scraping preciso de los banners de Prydwen"""
     
     def __init__(self):
         self.url = "https://www.prydwen.gg/star-rail/"
@@ -54,22 +56,23 @@ class BannerScraper:
         self.session.headers.update(self.headers)
     
     def extract_image_url(self, img_tag) -> str:
-        """Extrae la URL de la imagen del tag de Gatsby"""
+        """Extrae la URL completa de la imagen"""
         if not img_tag:
             return None
         
-        # Método 1: srcset
+        # Buscar en srcset (prioridad)
         srcset = img_tag.get('srcset', '')
         if srcset:
             urls = srcset.split(',')
             if urls:
+                # Tomar la URL de mayor resolución (última)
                 last_url = urls[-1].strip().split(' ')[0]
                 if last_url.startswith('http'):
                     return last_url
                 elif last_url.startswith('/'):
                     return f"https://www.prydwen.gg{last_url}"
         
-        # Método 2: src
+        # Buscar en src
         src = img_tag.get('src', '')
         if src:
             if src.startswith('http'):
@@ -79,14 +82,14 @@ class BannerScraper:
             else:
                 return f"https://www.prydwen.gg/{src}"
         
-        return "https://www.prydwen.gg/static/default-icon.png"
+        return None
     
-    def parse_character_card(self, card) -> dict:
-        """Parsea una tarjeta de personaje"""
+    def parse_character(self, card) -> dict:
+        """Parsea un personaje de avatar-card"""
         try:
-            # Nombre del personaje
-            name = "Unknown"
+            # Nombre del personaje (del href)
             a_tag = card.find('a')
+            name = "Unknown"
             if a_tag and a_tag.get('href'):
                 href = a_tag.get('href', '')
                 name = href.split('/')[-1].replace('-', ' ').title()
@@ -103,7 +106,7 @@ class BannerScraper:
                 if element_img and element_img.get('alt'):
                     element = element_img.get('alt')
             
-            # Rareza
+            # Rareza (de la clase)
             card_html = str(card)
             rarity = 5 if 'rarity-5' in card_html or 'rar-5' in card_html else 4
             
@@ -117,23 +120,19 @@ class BannerScraper:
             logger.error(f"Error parseando personaje: {e}")
             return None
     
-    def parse_light_cone(self, cone_div) -> dict:
-        """Parsea un cono de luz"""
+    def parse_light_cone(self, cone_item) -> dict:
+        """Parsea un cono de luz de accordion-item dentro de featured-cone"""
         try:
             # Nombre
-            name = "Unknown"
-            name_tag = cone_div.find('span', class_='hsr-set-name')
-            if name_tag:
-                name = name_tag.text.strip()
+            name_tag = cone_item.find('span', class_='hsr-set-name')
+            name = name_tag.text.strip() if name_tag else "Unknown"
             
             # Imagen
-            image_url = None
-            img_tag = cone_div.find('img')
-            if img_tag:
-                image_url = self.extract_image_url(img_tag)
+            img_tag = cone_item.find('img')
+            image_url = self.extract_image_url(img_tag)
             
             # Rareza
-            cone_html = str(cone_div)
+            cone_html = str(cone_item)
             rarity = 5 if 'rarity-5' in cone_html or 'rar-5' in cone_html else 4
             
             return {
@@ -141,11 +140,28 @@ class BannerScraper:
                 'image': image_url,
                 'rarity': rarity
             }
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error parseando cono: {e}")
             return None
     
+    def is_valid_banner(self, item) -> bool:
+        """Verifica si un accordion-item es realmente un banner"""
+        html = str(item)
+        
+        # Un banner válido debe tener al menos UNA de estas características:
+        has_featured_chars = 'featured-characters' in html
+        has_featured_cones = 'featured-cone' in html
+        has_duration = 'Event Duration' in html
+        has_event_name = 'event-name' in html
+        
+        # También debe tener al menos un personaje o cono
+        has_content = ('avatar-card' in html) or ('hsr-set-image' in html)
+        
+        return (has_event_name and has_duration and has_content and 
+                (has_featured_chars or has_featured_cones))
+    
     def get_banners(self):
-        """Obtiene los banners desde la página principal"""
+        """Obtiene todos los banners actuales"""
         try:
             logger.info(f"Obteniendo banners desde {self.url}")
             response = self.session.get(self.url, timeout=15)
@@ -153,178 +169,109 @@ class BannerScraper:
             
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Intentar extraer banners
+            # Buscar todos los accordion-item
+            all_items = soup.find_all('div', class_='swan accordion-item')
+            logger.info(f"Total accordion-items encontrados: {len(all_items)}")
+            
             banners = []
             
-            # Buscar secciones que contengan información de banners
-            event_sections = soup.find_all(['div', 'section'], string=re.compile(r'Event Duration', re.I))
-            
-            for section in event_sections:
+            for item in all_items:
+                if not self.is_valid_banner(item):
+                    continue
+                
                 try:
-                    parent = section.find_parent(['div', 'section'])
-                    if not parent:
-                        continue
+                    # Nombre del banner
+                    name_tag = item.find('div', class_='event-name')
+                    banner_name = name_tag.text.strip() if name_tag else "Banner sin nombre"
                     
-                    # Extraer duración
-                    duration_text = section.parent.get_text() if section.parent else ""
+                    # Tiempo restante
+                    time_tag = item.find('span', class_='time')
+                    time_remaining = time_tag.text.strip() if time_tag else "Tiempo desconocido"
                     
-                    # Nombre del banner (buscar personajes destacados)
-                    name = "Banner de Personaje"
+                    # Duración
+                    duration_tag = item.find('p', class_='duration')
+                    duration_text = duration_tag.text.strip() if duration_tag else ""
                     
-                    # Buscar personajes 5★
-                    featured_5star = []
-                    char_section = parent.find(string=re.compile(r'Featured 5★ character', re.I))
-                    if char_section:
-                        char_container = char_section.find_next(['div', 'p'])
-                        if char_container:
-                            char_links = char_container.find_all('a')
-                            for link in char_links:
-                                char_name = link.get_text().strip()
-                                if char_name:
-                                    featured_5star.append({
-                                        'name': char_name,
-                                        'image': None,
-                                        'element': 'Unknown',
-                                        'rarity': 5
-                                    })
-                    
-                    # Determinar tipo
-                    banner_type = "Personaje"
-                    if "Light Cone" in parent.get_text():
+                    # Determinar tipo de banner
+                    banner_type = "Mixto"
+                    if "Light Cone" in str(item) and "character" not in str(item).lower():
                         banner_type = "Cono de Luz"
+                    elif "character" in str(item).lower() and "Light Cone" not in str(item):
+                        banner_type = "Personaje"
                     
-                    # Tiempo restante (simplificado)
-                    time_remaining = "Consultar web"
+                    # Personajes 5★ y 4★
+                    featured_5star_char = []
+                    featured_4star_char = []
                     
-                    if featured_5star:
-                        name = featured_5star[0]['name'] + " Banner"
+                    # Buscar todas las secciones de personajes
+                    char_sections = item.find_all('div', class_='featured-characters')
+                    for section in char_sections:
+                        # Verificar si es 5★ o 4★ por el texto anterior
+                        prev_p = section.find_previous('p', class_='featured')
+                        is_five_star = prev_p and '5★' in prev_p.text if prev_p else False
+                        
+                        cards = section.find_all('div', class_='avatar-card')
+                        for card in cards:
+                            char_data = self.parse_character(card)
+                            if char_data:
+                                if is_five_star or char_data['rarity'] == 5:
+                                    featured_5star_char.append(char_data)
+                                else:
+                                    featured_4star_char.append(char_data)
                     
-                    banner = Banner(
-                        name=name,
-                        banner_type=banner_type,
-                        time_remaining=time_remaining,
-                        featured_5star=featured_5star,
-                        featured_4star=[],
-                        light_cones=[],
-                        duration_text=duration_text
-                    )
-                    banners.append(banner)
+                    # Conos de luz 5★ y 4★
+                    featured_5star_cone = []
+                    featured_4star_cone = []
+                    
+                    # Buscar todas las secciones de conos
+                    cone_sections = item.find_all('div', class_='featured-cone')
+                    for section in cone_sections:
+                        # Verificar si es 5★ o 4★
+                        prev_p = section.find_previous('p', class_='featured')
+                        is_five_star = prev_p and '5★' in prev_p.text if prev_p else False
+                        
+                        cone_items = section.find_all('div', class_='accordion-item')
+                        for cone in cone_items:
+                            cone_data = self.parse_light_cone(cone)
+                            if cone_data:
+                                if is_five_star or cone_data['rarity'] == 5:
+                                    featured_5star_cone.append(cone_data)
+                                else:
+                                    featured_4star_cone.append(cone_data)
+                    
+                    # Solo crear banner si tiene contenido
+                    if (featured_5star_char or featured_4star_char or 
+                        featured_5star_cone or featured_4star_cone):
+                        
+                        banner = Banner(
+                            name=banner_name,
+                            banner_type=banner_type,
+                            time_remaining=time_remaining,
+                            featured_5star_char=featured_5star_char,
+                            featured_4star_char=featured_4star_char,
+                            featured_5star_cone=featured_5star_cone,
+                            featured_4star_cone=featured_4star_cone,
+                            duration_text=duration_text
+                        )
+                        banners.append(banner)
+                        logger.info(f"✅ Banner encontrado: {banner_name}")
+                        
+                        # Log detallado
+                        logger.info(f"   - Personajes 5★: {len(featured_5star_char)}")
+                        logger.info(f"   - Personajes 4★: {len(featured_4star_char)}")
+                        logger.info(f"   - Conos 5★: {len(featured_5star_cone)}")
+                        logger.info(f"   - Conos 4★: {len(featured_4star_cone)}")
                     
                 except Exception as e:
-                    logger.error(f"Error procesando sección: {e}")
+                    logger.error(f"Error procesando banner: {e}")
                     continue
             
-            if banners:
-                logger.info(f"✅ Encontrados {len(banners)} banners")
-                return banners
-            else:
-                logger.warning("No se encontraron banners, usando datos manuales")
-                return self.get_banners_manual()
-                
+            logger.info(f"✅ Total banners válidos: {len(banners)}")
+            return banners
+            
         except Exception as e:
             logger.error(f"Error en scraping: {e}")
-            return self.get_banners_manual()
-    
-    def get_banners_manual(self):
-        """Datos manuales de respaldo actualizados"""
-        return [
-            Banner(
-                name="Butterfly on Swordtip (Seele)",
-                banner_type="Personaje",
-                time_remaining="15 días",
-                featured_5star=[{
-                    'name': 'Seele',
-                    'image': 'https://static.wikia.nocookie.net/houkai-star-rail/images/5/5d/Character_Seele_Splash_Art.png',
-                    'element': 'Quantum',
-                    'rarity': 5
-                }],
-                featured_4star=[
-                    {
-                        'name': 'Pela',
-                        'image': 'https://static.wikia.nocookie.net/houkai-star-rail/images/6/6f/Character_Pela_Splash_Art.png',
-                        'element': 'Ice',
-                        'rarity': 4
-                    },
-                    {
-                        'name': 'Hanya',
-                        'image': 'https://static.wikia.nocookie.net/houkai-star-rail/images/e/e9/Character_Hanya_Splash_Art.png',
-                        'element': 'Physical',
-                        'rarity': 4
-                    },
-                    {
-                        'name': 'Qingque',
-                        'image': 'https://static.wikia.nocookie.net/houkai-star-rail/images/0/0c/Character_Qingque_Splash_Art.png',
-                        'element': 'Quantum',
-                        'rarity': 4
-                    }
-                ],
-                light_cones=[{
-                    'name': 'In the Night',
-                    'image': 'https://static.wikia.nocookie.net/houkai-star-rail/images/1/13/Light_Cone_In_the_Night.png',
-                    'rarity': 5
-                }],
-                duration_text="Event Duration: 2024/01/17 - 2024/02/07"
-            ),
-            Banner(
-                name="Brilliant Fixation (Reforged Remembrance)",
-                banner_type="Cono de Luz",
-                time_remaining="15 días",
-                featured_5star=[],
-                featured_4star=[],
-                light_cones=[
-                    {
-                        'name': 'Reforged Remembrance',
-                        'image': 'https://static.wikia.nocookie.net/houkai-star-rail/images/8/8e/Light_Cone_Reforged_Remembrance.png',
-                        'rarity': 5
-                    },
-                    {
-                        'name': 'Planetary Rendezvous',
-                        'image': 'https://static.wikia.nocookie.net/houkai-star-rail/images/8/8d/Light_Cone_Planetary_Rendezvous.png',
-                        'rarity': 4
-                    },
-                    {
-                        'name': 'Resolution Shines As Pearls of Sweat',
-                        'image': 'https://static.wikia.nocookie.net/houkai-star-rail/images/0/05/Light_Cone_Resolution_Shines_As_Pearls_of_Sweat.png',
-                        'rarity': 4
-                    }
-                ],
-                duration_text="Event Duration: 2024/01/17 - 2024/02/07"
-            ),
-            Banner(
-                name="Stellar Warp (Estándar)",
-                banner_type="Estándar",
-                time_remaining="Permanente",
-                featured_5star=[
-                    {
-                        'name': 'Himeko',
-                        'image': 'https://static.wikia.nocookie.net/houkai-star-rail/images/3/37/Character_Himeko_Splash_Art.png',
-                        'element': 'Fire',
-                        'rarity': 5
-                    },
-                    {
-                        'name': 'Welt',
-                        'image': 'https://static.wikia.nocookie.net/houkai-star-rail/images/8/89/Character_Welt_Splash_Art.png',
-                        'element': 'Imaginary',
-                        'rarity': 5
-                    },
-                    {
-                        'name': 'Bronya',
-                        'image': 'https://static.wikia.nocookie.net/houkai-star-rail/images/e/e3/Character_Bronya_Splash_Art.png',
-                        'element': 'Wind',
-                        'rarity': 5
-                    },
-                    {
-                        'name': 'Gepard',
-                        'image': 'https://static.wikia.nocookie.net/houkai-star-rail/images/0/06/Character_Gepard_Splash_Art.png',
-                        'element': 'Ice',
-                        'rarity': 5
-                    }
-                ],
-                featured_4star=[],
-                light_cones=[],
-                duration_text="Siempre disponible"
-            )
-        ]
+            return []
 
 # ============================================
 # INSTANCIA GLOBAL DEL SCRAPER
@@ -346,9 +293,9 @@ def get_element_emoji(element: str) -> str:
     return elements.get(element, elements.get(element.lower(), '🔮'))
 
 def create_banner_embed(banner: Banner) -> discord.Embed:
-    """Crea un embed para un banner"""
+    """Crea un embed para un banner con todos los datos"""
     
-    # Color y emoji según tipo
+    # Color según tipo
     if banner.banner_type == "Personaje":
         color = discord.Color.from_rgb(255, 215, 0)  # Dorado
         emoji = "🦸"
@@ -356,8 +303,8 @@ def create_banner_embed(banner: Banner) -> discord.Embed:
         color = discord.Color.from_rgb(147, 112, 219)  # Púrpura
         emoji = "⚔️"
     else:
-        color = discord.Color.blue()
-        emoji = "📚"
+        color = discord.Color.from_rgb(52, 152, 219)  # Azul
+        emoji = "🎁"
     
     embed = discord.Embed(
         title=f"{emoji} {banner.name}",
@@ -368,66 +315,78 @@ def create_banner_embed(banner: Banner) -> discord.Embed:
     
     # Duración del evento
     if banner.duration_text:
-        clean_duration = banner.duration_text.replace('Event Duration', 'Duración')
+        clean_duration = banner.duration_text.replace('Event Duration', '📅 Duración')
         if len(clean_duration) > 1024:
             clean_duration = clean_duration[:1021] + "..."
         embed.add_field(name="📅 Duración", value=clean_duration, inline=False)
     
     # Personajes 5★
-    if banner.featured_5star:
+    if banner.featured_5star_char:
         chars_text = ""
-        for char in banner.featured_5star[:4]:
-            if char and char.get('name'):
-                element_emoji = get_element_emoji(char.get('element', 'Unknown'))
-                chars_text += f"{element_emoji} **{char['name']}** (★5)\n"
+        for char in banner.featured_5star_char[:6]:  # Máximo 6 para no saturar
+            element_emoji = get_element_emoji(char.get('element', 'Unknown'))
+            chars_text += f"{element_emoji} **{char['name']}**\n"
         
         if chars_text:
             embed.add_field(name="✨ Personajes 5★", value=chars_text, inline=True)
     
     # Personajes 4★
-    if banner.featured_4star:
+    if banner.featured_4star_char:
         chars_text = ""
-        for char in banner.featured_4star[:4]:
-            if char and char.get('name'):
-                element_emoji = get_element_emoji(char.get('element', 'Unknown'))
-                chars_text += f"{element_emoji} **{char['name']}** (★4)\n"
+        for char in banner.featured_4star_char[:6]:
+            element_emoji = get_element_emoji(char.get('element', 'Unknown'))
+            chars_text += f"{element_emoji} **{char['name']}**\n"
         
         if chars_text:
             embed.add_field(name="⭐ Personajes 4★", value=chars_text, inline=True)
     
-    # Conos de luz
-    if banner.light_cones:
+    # Conos de luz 5★
+    if banner.featured_5star_cone:
         cones_text = ""
-        for cone in banner.light_cones[:3]:
-            if cone and cone.get('name'):
-                rarity_star = "★5" if cone.get('rarity') == 5 else "★4"
-                cones_text += f"• **{cone['name']}** ({rarity_star})\n"
+        for cone in banner.featured_5star_cone[:4]:
+            cones_text += f"• **{cone['name']}** (★5)\n"
         
         if cones_text:
-            embed.add_field(name="💫 Conos de Luz", value=cones_text, inline=False)
+            embed.add_field(name="💫 Conos de Luz 5★", value=cones_text, inline=False)
     
-    # Thumbnail
+    # Conos de luz 4★
+    if banner.featured_4star_cone:
+        cones_text = ""
+        for cone in banner.featured_4star_cone[:4]:
+            cones_text += f"• **{cone['name']}** (★4)\n"
+        
+        if cones_text:
+            embed.add_field(name="📿 Conos de Luz 4★", value=cones_text, inline=False)
+    
+    # Thumbnail (prioridad: personaje 5★, cono 5★, personaje 4★, cono 4★)
     thumbnail_url = None
-    if banner.featured_5star and len(banner.featured_5star) > 0 and banner.featured_5star[0].get('image'):
-        thumbnail_url = banner.featured_5star[0]['image']
-    elif banner.light_cones and len(banner.light_cones) > 0 and banner.light_cones[0].get('image'):
-        thumbnail_url = banner.light_cones[0]['image']
-    else:
-        thumbnail_url = "https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png"
+    if banner.featured_5star_char and banner.featured_5star_char[0].get('image'):
+        thumbnail_url = banner.featured_5star_char[0]['image']
+    elif banner.featured_5star_cone and banner.featured_5star_cone[0].get('image'):
+        thumbnail_url = banner.featured_5star_cone[0]['image']
+    elif banner.featured_4star_char and banner.featured_4star_char[0].get('image'):
+        thumbnail_url = banner.featured_4star_char[0]['image']
+    elif banner.featured_4star_cone and banner.featured_4star_cone[0].get('image'):
+        thumbnail_url = banner.featured_4star_cone[0]['image']
     
     if thumbnail_url:
         embed.set_thumbnail(url=thumbnail_url)
+    else:
+        embed.set_thumbnail(url="https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png")
     
-    embed.set_footer(text="Datos de Prydwen.gg • Actualizado diariamente")
+    # Footer con totales
+    total_5star = len(banner.featured_5star_char) + len(banner.featured_5star_cone)
+    total_4star = len(banner.featured_4star_char) + len(banner.featured_4star_cone)
+    embed.set_footer(text=f"✨ {total_5star} ★5  |  ⭐ {total_4star} ★4  •  Datos de Prydwen.gg")
     
     return embed
 
 # ============================================
 # VARIABLES DE ENTORNO
 # ============================================
-logger.info("=" * 50)
-logger.info("INICIANDO BOT DE HONKAI STAR RAIL")
-logger.info("=" * 50)
+logger.info("=" * 60)
+logger.info("INICIANDO BOT DE HONKAI STAR RAIL - SCRAPER PRECISO")
+logger.info("=" * 60)
 
 TOKEN = os.environ.get('DISCORD_TOKEN')
 CHANNEL_ID_STR = os.environ.get('DISCORD_CHANNEL_ID')
@@ -492,13 +451,13 @@ async def publish_banners():
 async def send_banners(channel):
     """Envía los banners a un canal"""
     
-    loading_msg = await channel.send("🔄 Obteniendo información de los banners de Honkai: Star Rail...")
+    loading_msg = await channel.send("🔍 Escaneando banners de Honkai: Star Rail en Prydwen.gg...")
     
     try:
         banners = scraper.get_banners()
         
         if not banners:
-            await loading_msg.edit(content="❌ No se pudieron obtener los banners. Intenta más tarde.")
+            await loading_msg.edit(content="❌ No se encontraron banners. La estructura de la web puede haber cambiado.")
             return
         
         await loading_msg.delete()
@@ -510,7 +469,7 @@ async def send_banners(channel):
                 embed = create_banner_embed(banner)
                 await channel.send(embed=embed)
                 banners_enviados += 1
-                await asyncio.sleep(1)
+                await asyncio.sleep(1.5)  # Pausa para evitar rate limits
             except Exception as e:
                 logger.error(f"Error enviando banner {banner.name}: {e}")
                 continue
@@ -547,8 +506,16 @@ async def banner_info(ctx, *, banner_name: str = None):
     # Buscar por personaje
     if not found_banners:
         for b in banners:
-            for char in b.featured_5star + b.featured_4star:
+            for char in b.featured_5star_char + b.featured_4star_char:
                 if banner_name.lower() in char.get('name', '').lower():
+                    found_banners.append(b)
+                    break
+    
+    # Buscar por cono
+    if not found_banners:
+        for b in banners:
+            for cone in b.featured_5star_cone + b.featured_4star_cone:
+                if banner_name.lower() in cone.get('name', '').lower():
                     found_banners.append(b)
                     break
     
@@ -564,8 +531,32 @@ async def banner_info(ctx, *, banner_name: str = None):
 @commands.has_permissions(administrator=True)
 async def refresh_banners(ctx):
     """Fuerza actualización (solo admins)"""
-    await ctx.send("🔄 Actualizando banners manualmente...")
+    await ctx.send("🔄 Forzando actualización de banners...")
     await send_banners(ctx.channel)
+
+@bot.command(name='stats')
+async def banner_stats(ctx):
+    """Muestra estadísticas de los banners"""
+    banners = scraper.get_banners()
+    
+    total_banners = len(banners)
+    total_5star_chars = sum(len(b.featured_5star_char) for b in banners)
+    total_4star_chars = sum(len(b.featured_4star_char) for b in banners)
+    total_5star_cones = sum(len(b.featured_5star_cone) for b in banners)
+    total_4star_cones = sum(len(b.featured_4star_cone) for b in banners)
+    
+    embed = discord.Embed(
+        title="📊 Estadísticas de Banners HSR",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(name="🎯 Banners activos", value=str(total_banners), inline=True)
+    embed.add_field(name="✨ Personajes 5★", value=str(total_5star_chars), inline=True)
+    embed.add_field(name="⭐ Personajes 4★", value=str(total_4star_chars), inline=True)
+    embed.add_field(name="💫 Conos 5★", value=str(total_5star_cones), inline=True)
+    embed.add_field(name="📿 Conos 4★", value=str(total_4star_cones), inline=True)
+    
+    await ctx.send(embed=embed)
 
 @bot.event
 async def on_command_error(ctx, error):
