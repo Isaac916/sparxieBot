@@ -761,32 +761,82 @@ class BannerScraper:
         
         return False
     
-    def extract_endgame_content(self, item):
-        """Extrae información del contenido End Game con tiempo correcto"""
-        name_tag = item.find('div', class_='event-name')
-        name = name_tag.text.strip() if name_tag else ""
+   def extract_endgame_content(self, item):
+    """Extrae información del contenido End Game con tiempo correcto"""
+    name_tag = item.find('div', class_='event-name')
+    name = name_tag.text.strip() if name_tag else ""
+    
+    # Extraer versión (lo que está entre paréntesis)
+    version_match = re.search(r'\(([^)]+)\)', name)
+    version = version_match.group(1) if version_match else ""
+    
+    # Extraer tiempo restante del countdown
+    time_tag = item.find('span', class_='time')
+    time_remaining = time_tag.text.strip() if time_tag else "Tiempo desconocido"
+    
+    # Limpiar el tiempo (a veces viene con espacios extras)
+    time_remaining = re.sub(r'\s+', ' ', time_remaining).strip()
+    
+    # CORRECCIÓN: Restar 2 días y 5 horas del tiempo extraído
+    corrected_time = self.subtract_time(time_remaining, days=2, hours=5)
+    
+    logger.info(f"⏱️ Tiempo original para {content_type}: {time_remaining} -> Corregido: {corrected_time}")
+    
+    # Determinar el tipo
+    content_type = ""
+    for mode in self.endgame_modes:
+        if mode in name:
+            content_type = mode
+            break
+    
+    return EndgameContent(name, version, corrected_time, content_type)
+
+def subtract_time(self, time_str, days=0, hours=0):
+    """Resta días y horas de una cadena de tiempo como 'Xd Xh'"""
+    if time_str == "Tiempo desconocido":
+        return time_str
+    
+    try:
+        # Extraer días y horas actuales
+        current_days = 0
+        current_hours = 0
         
-        # Extraer versión (lo que está entre paréntesis)
-        version_match = re.search(r'\(([^)]+)\)', name)
-        version = version_match.group(1) if version_match else ""
+        # Buscar patrones como "Xd" y "Xh"
+        days_match = re.search(r'(\d+)d', time_str)
+        if days_match:
+            current_days = int(days_match.group(1))
         
-        # Extraer tiempo restante del countdown - ¡ESTA ES LA PARTE CLAVE!
-        time_tag = item.find('span', class_='time')
-        time_remaining = time_tag.text.strip() if time_tag else "Tiempo desconocido"
+        hours_match = re.search(r'(\d+)h', time_str)
+        if hours_match:
+            current_hours = int(hours_match.group(1))
         
-        # Limpiar el tiempo (a veces viene con espacios extras)
-        time_remaining = re.sub(r'\s+', ' ', time_remaining).strip()
+        # Restar días y horas
+        new_days = current_days - days
+        new_hours = current_hours - hours
         
-        # Determinar el tipo
-        content_type = ""
-        for mode in self.endgame_modes:
-            if mode in name:
-                content_type = mode
-                break
+        # Ajustar si las horas quedan negativas
+        if new_hours < 0:
+            new_days -= 1
+            new_hours += 24
         
-        logger.info(f"⏱️ Tiempo extraído para {content_type}: {time_remaining}")
+        # Ajustar si los días quedan negativos
+        if new_days < 0:
+            new_days = 0
+            new_hours = 0
         
-        return EndgameContent(name, version, time_remaining, content_type)
+        # Construir nueva cadena de tiempo
+        if new_days > 0 and new_hours > 0:
+            return f"{new_days}d {new_hours}h"
+        elif new_days > 0:
+            return f"{new_days}d"
+        elif new_hours > 0:
+            return f"{new_hours}h"
+        else:
+            return "Terminado"
+            
+    except Exception as e:
+        logger.error(f"Error restando tiempo: {e}")
+        return time_str
     
     def parse_character(self, card) -> dict:
         try:
