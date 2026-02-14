@@ -126,20 +126,23 @@ class BannerScraper:
             'Imaginary': '✨'
         }
     
-    def extract_image_url(self, img_tag) -> str:
-        """Extrae la URL completa de la imagen de manera segura"""
-        if not img_tag:
-            return None
-        
-        url = None
-        
-        try:
-            # Método 1: srcset (prioridad)
-            srcset = img_tag.get('srcset', '')
-            if srcset:
+   def extract_image_url(self, img_tag) -> str:
+    """Extrae la URL completa de la imagen de manera más robusta"""
+    if not img_tag:
+        return None
+    
+    url = None
+    
+    try:
+        # Método 1: Buscar en picture > source (prioridad máxima)
+        picture = img_tag.find_parent('picture')
+        if picture:
+            source = picture.find('source')
+            if source and source.get('srcset'):
+                srcset = source.get('srcset')
+                # Tomar la URL de mayor resolución
                 urls = srcset.split(',')
                 if urls:
-                    # Tomar la URL de mayor resolución (última)
                     last_url = urls[-1].strip()
                     if ' ' in last_url:
                         last_url = last_url.split(' ')[0]
@@ -150,28 +153,58 @@ class BannerScraper:
                         url = f"https://www.prydwen.gg{last_url}"
                     elif last_url.startswith('static'):
                         url = f"https://www.prydwen.gg/{last_url}"
-            
-            # Método 2: src
-            if not url:
-                src = img_tag.get('src', '')
-                if src and not src.startswith('data:'):  # Ignorar data URIs
-                    if src.startswith('http'):
-                        url = src
-                    elif src.startswith('/'):
-                        url = f"https://www.prydwen.gg{src}"
-                    elif src.startswith('static'):
-                        url = f"https://www.prydwen.gg/{src}"
-            
-            # Validar que sea una URL HTTP/HTTPS válida
-            if url and (url.startswith('http://') or url.startswith('https://')):
-                # Limpiar la URL de posibles caracteres extraños
-                url = url.split('?')[0].split('#')[0]
-                return url
-            
-        except Exception as e:
-            logger.error(f"Error extrayendo URL: {e}")
         
-        return None
+        # Método 2: srcset del propio img
+        if not url:
+            srcset = img_tag.get('srcset', '')
+            if srcset:
+                urls = srcset.split(',')
+                if urls:
+                    last_url = urls[-1].strip()
+                    if ' ' in last_url:
+                        last_url = last_url.split(' ')[0]
+                    
+                    if last_url.startswith('http'):
+                        url = last_url
+                    elif last_url.startswith('/'):
+                        url = f"https://www.prydwen.gg{last_url}"
+                    elif last_url.startswith('static'):
+                        url = f"https://www.prydwen.gg/{last_url}"
+        
+        # Método 3: src
+        if not url:
+            src = img_tag.get('src', '')
+            if src and not src.startswith('data:'):
+                if src.startswith('http'):
+                    url = src
+                elif src.startswith('/'):
+                    url = f"https://www.prydwen.gg{src}"
+                elif src.startswith('static'):
+                    url = f"https://www.prydwen.gg/{src}"
+        
+        # Limpiar la URL y asegurar que sea válida
+        if url:
+            # Eliminar parámetros de query y fragmentos
+            url = url.split('?')[0].split('#')[0]
+            
+            # Asegurar que termina en extensión de imagen válida
+            if not any(url.endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.webp', '.gif']):
+                # Si no tiene extensión, intentar añadir .png
+                if not url.endswith('/'):
+                    url = url + '.png'
+            
+            # Verificar que sea una URL HTTP/HTTPS válida
+            if url.startswith(('http://', 'https://')):
+                return url
+            elif url.startswith('/'):
+                return f"https://www.prydwen.gg{url}"
+            else:
+                return f"https://www.prydwen.gg/{url}"
+        
+    except Exception as e:
+        logger.error(f"Error extrayendo URL: {e}")
+    
+    return self.default_image
     
     def parse_date_from_duration(self, duration_text):
         """Parsea las fechas de inicio y fin del texto de duración"""
@@ -448,7 +481,7 @@ def get_element_emoji(element: str) -> str:
     return elements.get(element, elements.get(element.lower(), '🔮'))
 
 async def create_forum_post(forum_channel, banner, status):
-    """Crea una publicación en un canal de foro para un banner"""
+    """Crea una publicación en un canal de foro para un banner con imágenes"""
     
     # Emoji según el tipo
     type_emoji = {
@@ -460,7 +493,7 @@ async def create_forum_post(forum_channel, banner, status):
     status_emoji = "🔴" if status == "actual" else "🟡"
     
     # Título de la publicación
-    thread_name = f"{status_emoji} {type_emoji} {banner.name[:90]}"  # Máximo 100 chars
+    thread_name = f"{status_emoji} {type_emoji} {banner.name[:90]}"
     
     # Contenido inicial de la publicación
     content = f"""# {status_emoji} **{banner.name}**
@@ -472,7 +505,7 @@ async def create_forum_post(forum_channel, banner, status):
 
 """
     
-    # Añadir personajes destacados
+    # Añadir personajes destacados CON SUS IMÁGENES
     if banner.featured_5star_char or banner.featured_4star_char:
         content += "## ✨ Personajes Destacados\n\n"
         
@@ -507,20 +540,18 @@ async def create_forum_post(forum_channel, banner, status):
             content += "\n"
     
     # Crear la publicación en el foro
-    # Los canales de foro usan create_thread sin necesidad de mensaje base
     thread = await forum_channel.create_thread(
         name=thread_name,
         content=content,
         auto_archive_duration=10080  # 7 días
     )
     
-    # Ahora thread es el hilo creado, podemos enviar mensajes adicionales
     thread_obj = thread[0] if isinstance(thread, tuple) else thread
     
     # Enviar todas las imágenes como mensajes en el hilo
     all_images = []
     
-    # Recopilar todas las URLs de imágenes
+    # Recopilar todas las URLs de imágenes (evitando duplicados y la imagen por defecto)
     for char in banner.characters_data:
         if char.get('image') and char['image'] not in all_images and char['image'] != scraper.default_image:
             all_images.append(char['image'])
@@ -529,23 +560,41 @@ async def create_forum_post(forum_channel, banner, status):
         if cone.get('image') and cone['image'] not in all_images and cone['image'] != scraper.default_image:
             all_images.append(cone['image'])
     
-    # Enviar imágenes
+    # Enviar imágenes con un mensaje más vistoso
     if all_images:
         await thread_obj.send("## 🖼️ **Galería de Imágenes**")
         
-        # Enviar cada imagen como un mensaje individual (mejor para vista previa)
-        for img_url in all_images[:10]:  # Máximo 10 imágenes
+        # Enviar cada imagen individualmente para mejor visualización
+        for i, img_url in enumerate(all_images[:10], 1):
             try:
-                await thread_obj.send(img_url)
+                # Crear un embed para cada imagen (se ve más profesional)
+                embed = discord.Embed(
+                    title=f"Imagen {i}",
+                    color=discord.Color.gold() if i == 1 else discord.Color.blue()
+                )
+                embed.set_image(url=img_url)
+                embed.set_footer(text=f"Personaje/Cono destacado")
+                await thread_obj.send(embed=embed)
                 await asyncio.sleep(0.5)
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Error enviando imagen {img_url}: {e}")
+                # Si falla el embed, intentar enviar solo la URL
+                try:
+                    await thread_obj.send(img_url)
+                except:
+                    pass
     
     # Estadísticas finales
     total_5star = len(banner.featured_5star_char) + len(banner.featured_5star_cone)
     total_4star = len(banner.featured_4star_char) + len(banner.featured_4star_cone)
     
-    await thread_obj.send(f"✨ **{total_5star} ★5**  |  ⭐ **{total_4star} ★4**")
+    # Mensaje de resumen con emojis
+    summary = f"""## 📊 **Resumen**
+✨ **{total_5star} ★5**  |  ⭐ **{total_4star} ★4**
+
+*Los personajes y conos destacados aparecen arriba con sus imágenes.*
+"""
+    await thread_obj.send(summary)
     
     return thread_obj
 
