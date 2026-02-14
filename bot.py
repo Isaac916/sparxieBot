@@ -43,7 +43,7 @@ class Banner:
 # CLASE BANNER SCRAPER
 # ============================================
 class BannerScraper:
-    """Clase para hacer scraping preciso de los banners de Prydwen"""
+    """Clase para hacer scraping de TODOS los banners de warps en Prydwen"""
     
     def __init__(self):
         self.url = "https://www.prydwen.gg/star-rail/"
@@ -104,19 +104,49 @@ class BannerScraper:
         
         return None
     
+    def is_warp_banner(self, item) -> bool:
+        """Determina si un accordion-item es un WARP (no un evento de juego)"""
+        html = str(item)
+        
+        # Un WARP verdadero SIEMPRE tiene al menos UNA de estas características:
+        has_featured_chars = 'featured-characters' in html
+        has_featured_cones = 'featured-cone' in html
+        
+        # También debe tener nombre y duración
+        has_event_name = 'event-name' in html
+        has_duration = 'Event Duration' in html
+        
+        # Los eventos de juego (Memory Turbulence) NO tienen featured
+        is_game_event = 'Memory Turbulence' in html or 'Description:' in html
+        
+        return (has_event_name and has_duration and 
+                (has_featured_chars or has_featured_cones) and 
+                not is_game_event)
+    
+    def classify_banner_type(self, item) -> str:
+        """Clasifica si es banner de personaje, cono o mixto"""
+        html = str(item).lower()
+        has_chars = 'featured-characters' in html
+        has_cones = 'featured-cone' in html
+        
+        if has_chars and not has_cones:
+            return "Personaje"
+        elif has_cones and not has_chars:
+            return "Cono de Luz"
+        else:
+            return "Mixto (Doble)"
+    
     def parse_character(self, card) -> dict:
         """Parsea un personaje de avatar-card"""
         try:
             a_tag = card.find('a')
             name = "Unknown"
-            char_key = ""
             
             if a_tag and a_tag.get('href'):
                 href = a_tag.get('href', '')
-                char_key = href.split('/')[-1]
-                name = char_key.replace('-', ' ').title()
+                name = href.split('/')[-1].replace('-', ' ').title()
             
-            # Imagen - intentar obtener URL válida
+            # Imagen
             img_tag = card.find('img')
             image_url = self.extract_image_url(img_tag)
             
@@ -179,19 +209,52 @@ class BannerScraper:
                 'rarity': 4
             }
     
-    def is_valid_banner(self, item) -> bool:
-        """Verifica si un accordion-item es realmente un banner"""
-        html = str(item)
+    def extract_characters(self, item):
+        """Extrae personajes 5★ y 4★ de un banner"""
+        featured_5star_char = []
+        featured_4star_char = []
         
-        # Un banner válido debe tener:
-        has_event_name = 'event-name' in html
-        has_duration = 'Event Duration' in html
-        has_content = ('avatar-card' in html) or ('hsr-set-image' in html)
+        char_sections = item.find_all('div', class_='featured-characters')
+        for section in char_sections:
+            # Verificar si es 5★ o 4★ por el texto anterior
+            prev_p = section.find_previous('p', class_='featured')
+            is_five_star = prev_p and '5★' in prev_p.text if prev_p else False
+            
+            cards = section.find_all('div', class_='avatar-card')
+            for card in cards:
+                char_data = self.parse_character(card)
+                if char_data:
+                    if is_five_star or char_data['rarity'] == 5:
+                        featured_5star_char.append(char_data)
+                    else:
+                        featured_4star_char.append(char_data)
         
-        return has_event_name and has_duration and has_content
+        return featured_5star_char, featured_4star_char
+    
+    def extract_light_cones(self, item):
+        """Extrae conos 5★ y 4★ de un banner"""
+        featured_5star_cone = []
+        featured_4star_cone = []
+        
+        cone_sections = item.find_all('div', class_='featured-cone')
+        for section in cone_sections:
+            # Verificar si es 5★ o 4★
+            prev_p = section.find_previous('p', class_='featured')
+            is_five_star = prev_p and '5★' in prev_p.text if prev_p else False
+            
+            cone_items = section.find_all('div', class_='accordion-item')
+            for cone in cone_items:
+                cone_data = self.parse_light_cone(cone)
+                if cone_data:
+                    if is_five_star or cone_data['rarity'] == 5:
+                        featured_5star_cone.append(cone_data)
+                    else:
+                        featured_4star_cone.append(cone_data)
+        
+        return featured_5star_cone, featured_4star_cone
     
     def get_banners(self):
-        """Obtiene todos los banners actuales"""
+        """Obtiene TODOS los banners de warps (actuales y futuros)"""
         try:
             logger.info(f"Obteniendo banners desde {self.url}")
             response = self.session.get(self.url, timeout=15)
@@ -199,78 +262,36 @@ class BannerScraper:
             
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Buscar todos los accordion-item
+            # Buscar TODOS los accordion-item
             all_items = soup.find_all('div', class_='swan accordion-item')
             logger.info(f"Total accordion-items encontrados: {len(all_items)}")
             
             banners = []
             
             for item in all_items:
-                if not self.is_valid_banner(item):
+                # Verificar si es un WARP (tiene personajes o conos destacados)
+                if not self.is_warp_banner(item):
                     continue
                 
                 try:
-                    # Nombre del banner
+                    # Extraer datos básicos
                     name_tag = item.find('div', class_='event-name')
                     banner_name = name_tag.text.strip() if name_tag else "Banner sin nombre"
                     
-                    # Tiempo restante
                     time_tag = item.find('span', class_='time')
                     time_remaining = time_tag.text.strip() if time_tag else "Tiempo desconocido"
                     
-                    # Duración
                     duration_tag = item.find('p', class_='duration')
                     duration_text = duration_tag.text.strip() if duration_tag else ""
                     
-                    # Determinar tipo de banner
-                    banner_type = "Mixto"
-                    item_text = str(item).lower()
-                    if "light cone" in item_text and "character" not in item_text:
-                        banner_type = "Cono de Luz"
-                    elif "character" in item_text and "light cone" not in item_text:
-                        banner_type = "Personaje"
+                    # Clasificar por tipo
+                    banner_type = self.classify_banner_type(item)
                     
-                    # Personajes 5★ y 4★
-                    featured_5star_char = []
-                    featured_4star_char = []
+                    # Extraer personajes y conos
+                    featured_5star_char, featured_4star_char = self.extract_characters(item)
+                    featured_5star_cone, featured_4star_cone = self.extract_light_cones(item)
                     
-                    # Buscar todas las secciones de personajes
-                    char_sections = item.find_all('div', class_='featured-characters')
-                    for section in char_sections:
-                        # Verificar si es 5★ o 4★ por el texto anterior
-                        prev_p = section.find_previous('p', class_='featured')
-                        is_five_star = prev_p and '5★' in prev_p.text if prev_p else False
-                        
-                        cards = section.find_all('div', class_='avatar-card')
-                        for card in cards:
-                            char_data = self.parse_character(card)
-                            if char_data:
-                                if is_five_star or char_data['rarity'] == 5:
-                                    featured_5star_char.append(char_data)
-                                else:
-                                    featured_4star_char.append(char_data)
-                    
-                    # Conos de luz 5★ y 4★
-                    featured_5star_cone = []
-                    featured_4star_cone = []
-                    
-                    # Buscar todas las secciones de conos
-                    cone_sections = item.find_all('div', class_='featured-cone')
-                    for section in cone_sections:
-                        # Verificar si es 5★ o 4★
-                        prev_p = section.find_previous('p', class_='featured')
-                        is_five_star = prev_p and '5★' in prev_p.text if prev_p else False
-                        
-                        cone_items = section.find_all('div', class_='accordion-item')
-                        for cone in cone_items:
-                            cone_data = self.parse_light_cone(cone)
-                            if cone_data:
-                                if is_five_star or cone_data['rarity'] == 5:
-                                    featured_5star_cone.append(cone_data)
-                                else:
-                                    featured_4star_cone.append(cone_data)
-                    
-                    # Solo crear banner si tiene contenido
+                    # Crear banner solo si tiene contenido
                     if (featured_5star_char or featured_4star_char or 
                         featured_5star_cone or featured_4star_cone):
                         
@@ -286,6 +307,7 @@ class BannerScraper:
                         )
                         banners.append(banner)
                         logger.info(f"✅ Banner encontrado: {banner_name}")
+                        logger.info(f"   - Tipo: {banner_type}")
                         logger.info(f"   - Personajes 5★: {len(featured_5star_char)}")
                         logger.info(f"   - Personajes 4★: {len(featured_4star_char)}")
                         logger.info(f"   - Conos 5★: {len(featured_5star_cone)}")
@@ -295,7 +317,7 @@ class BannerScraper:
                     logger.error(f"Error procesando banner: {e}")
                     continue
             
-            logger.info(f"✅ Total banners válidos: {len(banners)}")
+            logger.info(f"✅ TOTAL WARPS ENCONTRADOS: {len(banners)}")
             return banners
             
         except Exception as e:
@@ -438,7 +460,7 @@ def create_banner_embed(banner: Banner) -> discord.Embed:
 # VARIABLES DE ENTORNO
 # ============================================
 logger.info("=" * 60)
-logger.info("INICIANDO BOT DE HONKAI STAR RAIL - VERSIÓN FINAL")
+logger.info("INICIANDO BOT DE HONKAI STAR RAIL - DETECTOR DE MÚLTIPLES BANNERS")
 logger.info("=" * 60)
 
 TOKEN = os.environ.get('DISCORD_TOKEN')
@@ -470,7 +492,7 @@ async def on_ready():
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
-            name="los banners de HSR | !banners"
+            name="todos los banners de HSR | !banners"
         )
     )
     
@@ -504,7 +526,7 @@ async def publish_banners():
 async def send_banners(channel):
     """Envía los banners a un canal"""
     
-    loading_msg = await channel.send("🔍 Escaneando banners de Honkai: Star Rail en Prydwen.gg...")
+    loading_msg = await channel.send("🔍 Escaneando TODOS los banners de Honkai: Star Rail en Prydwen.gg...")
     
     try:
         banners = scraper.get_banners()
