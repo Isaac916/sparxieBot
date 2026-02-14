@@ -595,6 +595,16 @@ def get_character_info(character_name):
     return None
 
 # ============================================
+# CLASE ENDGAME CONTENT
+# ============================================
+class EndgameContent:
+    def __init__(self, name: str, version: str, time_remaining: str, content_type: str):
+        self.name = name
+        self.version = version
+        self.time_remaining = time_remaining
+        self.content_type = content_type  # Memory of Chaos, Pure Fiction, Apocalyptic Shadow
+
+# ============================================
 # CLASE BANNER
 # ============================================
 class Banner:
@@ -641,17 +651,17 @@ class ForumManager:
         except Exception as e:
             logger.error(f"Error guardando publicaciones: {e}")
     
-    def get_post_id(self, channel_id, character_id):
-        key = f"{channel_id}_{character_id}"
+    def get_post_id(self, channel_id, content_id):
+        key = f"{channel_id}_{content_id}"
         return self.posts.get(key)
     
-    def set_post_id(self, channel_id, character_id, thread_id):
-        key = f"{channel_id}_{character_id}"
+    def set_post_id(self, channel_id, content_id, thread_id):
+        key = f"{channel_id}_{content_id}"
         self.posts[key] = thread_id
         self.save_posts()
     
-    def remove_post(self, channel_id, character_id):
-        key = f"{channel_id}_{character_id}"
+    def remove_post(self, channel_id, content_id):
+        key = f"{channel_id}_{content_id}"
         if key in self.posts:
             del self.posts[key]
             self.save_posts()
@@ -683,6 +693,9 @@ class BannerScraper:
             'Deadly Dancer', 'Evil March Strikes Back', 'Full of Malice',
             'Seer Strategist', 'Excalibur!', 'Bone of My Sword'
         ]
+        
+        # Lista de contenido End Game
+        self.endgame_modes = ['Memory of Chaos', 'Pure Fiction', 'Apocalyptic Shadow']
     
     def parse_date_from_duration(self, duration_text):
         if not duration_text:
@@ -732,6 +745,43 @@ class BannerScraper:
         is_game_event = 'Memory Turbulence' in html or 'Description:' in html
         
         return is_warp and not is_game_event and has_event_name and has_duration
+    
+    def is_endgame_content(self, item) -> bool:
+        """Determina si un accordion-item es contenido End Game"""
+        name_tag = item.find('div', class_='event-name')
+        if not name_tag:
+            return False
+        
+        name = name_tag.text.strip()
+        
+        # Verificar si el nombre contiene alguno de los modos End Game
+        for mode in self.endgame_modes:
+            if mode in name:
+                return True
+        
+        return False
+    
+    def extract_endgame_content(self, item):
+        """Extrae información del contenido End Game"""
+        name_tag = item.find('div', class_='event-name')
+        name = name_tag.text.strip() if name_tag else ""
+        
+        # Extraer versión (lo que está entre paréntesis)
+        version_match = re.search(r'\(([^)]+)\)', name)
+        version = version_match.group(1) if version_match else ""
+        
+        # Extraer tiempo restante
+        time_tag = item.find('span', class_='time')
+        time_remaining = time_tag.text.strip() if time_tag else "Tiempo desconocido"
+        
+        # Determinar el tipo
+        content_type = ""
+        for mode in self.endgame_modes:
+            if mode in name:
+                content_type = mode
+                break
+        
+        return EndgameContent(name, version, time_remaining, content_type)
     
     def parse_character(self, card) -> dict:
         try:
@@ -905,6 +955,31 @@ class BannerScraper:
         except Exception as e:
             logger.error(f"Error en scraping: {e}")
             return []
+    
+    def get_endgame_content(self):
+        """Obtiene todo el contenido End Game"""
+        try:
+            response = self.session.get(self.url, timeout=15)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            all_items = soup.find_all('div', class_='accordion-item')
+            
+            endgame_list = []
+            
+            for item in all_items:
+                if self.is_endgame_content(item):
+                    content = self.extract_endgame_content(item)
+                    if content:
+                        endgame_list.append(content)
+                        logger.info(f"✅ End Game encontrado: {content.name} - Versión: {content.version} - Tiempo: {content.time_remaining}")
+            
+            return endgame_list
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo End Game content: {e}")
+            return []
 
 # ============================================
 # INSTANCIAS GLOBALES
@@ -978,14 +1053,39 @@ async def create_character_post(forum_channel, character_name, character_info, b
     
     return thread_obj
 
+async def create_endgame_post(forum_channel, endgame_content):
+    """Crea una publicación en el foro para contenido End Game"""
+    
+    # Título: nombre del modo + versión
+    thread_name = f"⚔️ {endgame_content.content_type} {endgame_content.version}"
+    
+    # La imagen la pondrás tú después (dejamos un placeholder)
+    thread = await forum_channel.create_thread(
+        name=thread_name,
+        content="**[Aquí irá la imagen del End Game content]**",
+        auto_archive_duration=10080
+    )
+    
+    thread_obj = thread[0] if isinstance(thread, tuple) else thread
+    
+    # Información del End Game
+    info_text = (
+        f"## {endgame_content.content_type} {endgame_content.version}\n\n"
+        f"⏳ **Tiempo restante:** {endgame_content.time_remaining}\n\n"
+        f"*Reemplaza este mensaje con la imagen correspondiente*"
+    )
+    
+    await thread_obj.send(info_text)
+    
+    logger.info(f"✅ Publicación creada para End Game: {endgame_content.content_type} {endgame_content.version}")
+    
+    return thread_obj
+
 async def update_forum_posts():
-    """Actualiza las publicaciones del foro por personaje (solo 5★)"""
+    """Actualiza las publicaciones del foro por personaje (solo 5★) y End Game"""
     
     all_banners = scraper.get_banners()
-    
-    if not all_banners:
-        logger.warning("No se encontraron banners para actualizar")
-        return
+    all_endgame = scraper.get_endgame_content()
     
     now = datetime.now()
     
@@ -995,6 +1095,9 @@ async def update_forum_posts():
     
     if TARGET_FORUM_PROXIMO:
         await update_character_posts(TARGET_FORUM_PROXIMO, all_banners, now, "proximo")
+    
+    if TARGET_FORUM_ENDGAME:
+        await update_endgame_posts(TARGET_FORUM_ENDGAME, all_endgame)
 
 async def update_character_posts(channel_id, banners, now, status):
     """Actualiza las publicaciones de personajes 5★ en un canal específico"""
@@ -1100,20 +1203,81 @@ async def update_character_posts(channel_id, banners, now, status):
     except Exception as e:
         logger.error(f"❌ Error actualizando foro {channel.name}: {e}")
 
+async def update_endgame_posts(channel_id, endgame_list):
+    """Actualiza las publicaciones de End Game en un canal específico"""
+    
+    channel = bot.get_channel(channel_id)
+    if not channel:
+        logger.error(f"❌ No se encontró el canal {channel_id}")
+        return
+    
+    if not isinstance(channel, discord.ForumChannel):
+        logger.error(f"❌ El canal {channel_id} no es un foro")
+        return
+    
+    try:
+        logger.info(f"Foro End Game: {len(endgame_list)} modos encontrados")
+        
+        # Obtener hilos activos
+        active_threads = []
+        active_threads.extend(channel.threads)
+        async for thread in channel.archived_threads(limit=100):
+            active_threads.append(thread)
+        
+        # Mapear hilos existentes por nombre del modo
+        existing_posts = {}
+        for thread in active_threads:
+            for content in endgame_list:
+                content_id = f"{content.content_type}_{content.version}".lower().replace(' ', '_')
+                if content.content_type in thread.name:
+                    existing_posts[content_id] = thread
+                    break
+        
+        # Crear nuevas publicaciones para End Game que no existen
+        for content in endgame_list:
+            content_id = f"{content.content_type}_{content.version}".lower().replace(' ', '_')
+            
+            if content_id in existing_posts:
+                # Actualizar tiempo si es necesario
+                thread = existing_posts[content_id]
+                try:
+                    # Enviar mensaje de actualización
+                    await thread.send(f"🔄 **Actualización**\n⏳ Tiempo restante: {content.time_remaining}")
+                    logger.info(f"✅ Hilo actualizado: {content.content_type} {content.version}")
+                except Exception as e:
+                    logger.error(f"Error actualizando hilo: {e}")
+            else:
+                # Crear nueva publicación
+                try:
+                    thread = await create_endgame_post(channel, content)
+                    forum_manager.set_post_id(channel_id, content_id, thread.id)
+                    logger.info(f"✅ Publicación creada: {content.content_type} {content.version}")
+                except Exception as e:
+                    logger.error(f"Error creando publicación: {e}")
+            
+            await asyncio.sleep(1)
+        
+        logger.info(f"✅ Foro End Game actualizado con {len(endgame_list)} modos")
+        
+    except Exception as e:
+        logger.error(f"❌ Error actualizando foro End Game: {e}")
+
 # ============================================
 # VARIABLES DE ENTORNO
 # ============================================
 logger.info("=" * 60)
-logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - SOLO PERSONAJES 5★ PRINCIPALES")
+logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - CON END GAME")
 logger.info("=" * 60)
 
 TOKEN = os.environ.get('DISCORD_TOKEN')
 FORUM_CHANNEL_ID_ACTUAL = os.environ.get('FORUM_CHANNEL_ACTUAL')
 FORUM_CHANNEL_ID_PROXIMO = os.environ.get('FORUM_CHANNEL_PROXIMO')
+FORUM_CHANNEL_ID_ENDGAME = os.environ.get('FORUM_CHANNEL_ENDGAME')
 
 logger.info(f"🔑 DISCORD_TOKEN: {'✅ ENCONTRADO' if TOKEN else '❌ NO ENCONTRADO'}")
 logger.info(f"📢 Canal FORO ACTUAL: {'✅ ' + FORUM_CHANNEL_ID_ACTUAL if FORUM_CHANNEL_ID_ACTUAL else '❌ NO CONFIGURADO'}")
 logger.info(f"📢 Canal FORO PRÓXIMO: {'✅ ' + FORUM_CHANNEL_ID_PROXIMO if FORUM_CHANNEL_ID_PROXIMO else '❌ NO CONFIGURADO'}")
+logger.info(f"📢 Canal FORO ENDGAME: {'✅ ' + FORUM_CHANNEL_ID_ENDGAME if FORUM_CHANNEL_ID_ENDGAME else '❌ NO CONFIGURADO'}")
 
 TARGET_FORUM_ACTUAL = None
 if FORUM_CHANNEL_ID_ACTUAL:
@@ -1131,6 +1295,14 @@ if FORUM_CHANNEL_ID_PROXIMO:
     except ValueError:
         logger.error(f"❌ FORUM_CHANNEL_PROXIMO no es válido: {FORUM_CHANNEL_ID_PROXIMO}")
 
+TARGET_FORUM_ENDGAME = None
+if FORUM_CHANNEL_ID_ENDGAME:
+    try:
+        TARGET_FORUM_ENDGAME = int(FORUM_CHANNEL_ID_ENDGAME.strip())
+        logger.info(f"✅ Foro endgame: {TARGET_FORUM_ENDGAME}")
+    except ValueError:
+        logger.error(f"❌ FORUM_CHANNEL_ENDGAME no es válido: {FORUM_CHANNEL_ID_ENDGAME}")
+
 if not TOKEN:
     logger.error("❌ ERROR CRÍTICO: No hay token de Discord")
     sys.exit(1)
@@ -1145,11 +1317,11 @@ async def on_ready():
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
-            name="Buscando Personajes 5★ | !personajes"
+            name="🔮 HSR | !personajes"
         )
     )
     
-    if TARGET_FORUM_ACTUAL or TARGET_FORUM_PROXIMO:
+    if TARGET_FORUM_ACTUAL or TARGET_FORUM_PROXIMO or TARGET_FORUM_ENDGAME:
         daily_forum_posts.start()
         logger.info(f"📅 Tarea diaria iniciada")
 
@@ -1226,6 +1398,38 @@ async def personajes_command(ctx):
         logger.error(f"Error en comando personajes: {e}")
         await loading_msg.edit(content=f"❌ **Error:** {str(e)[:200]}")
 
+@bot.command(name='endgame')
+async def endgame_command(ctx):
+    """Muestra el contenido End Game actual"""
+    
+    loading_msg = await ctx.send("⚔️ **Escaneando contenido End Game...**")
+    
+    try:
+        endgame_list = scraper.get_endgame_content()
+        
+        if not endgame_list:
+            await loading_msg.edit(content="❌ **No se encontró contenido End Game.**")
+            return
+        
+        await loading_msg.delete()
+        
+        response = "## ⚔️ **Contenido End Game**\n\n"
+        
+        for content in endgame_list:
+            response += f"### {content.content_type} {content.version}\n"
+            response += f"⏳ **Tiempo restante:** {content.time_remaining}\n\n"
+        
+        if len(response) > 2000:
+            parts = [response[i:i+1900] for i in range(0, len(response), 1900)]
+            for part in parts:
+                await ctx.send(part)
+        else:
+            await ctx.send(response)
+        
+    except Exception as e:
+        logger.error(f"Error en comando endgame: {e}")
+        await loading_msg.edit(content=f"❌ **Error:** {str(e)[:200]}")
+
 @bot.command(name='refresh_forum')
 @commands.has_permissions(administrator=True)
 async def refresh_forum(ctx):
@@ -1235,11 +1439,17 @@ async def refresh_forum(ctx):
 @bot.command(name='reset_forum')
 @commands.has_permissions(administrator=True)
 async def reset_forum(ctx, channel_type: str = None):
-    if not channel_type or channel_type not in ['actual', 'proximo']:
-        await ctx.send("❌ **Usa:** `!reset_forum actual` o `!reset_forum proximo`")
+    if not channel_type or channel_type not in ['actual', 'proximo', 'endgame']:
+        await ctx.send("❌ **Usa:** `!reset_forum actual`, `!reset_forum proximo` o `!reset_forum endgame`")
         return
     
-    channel_id = TARGET_FORUM_ACTUAL if channel_type == 'actual' else TARGET_FORUM_PROXIMO
+    if channel_type == 'actual':
+        channel_id = TARGET_FORUM_ACTUAL
+    elif channel_type == 'proximo':
+        channel_id = TARGET_FORUM_PROXIMO
+    else:
+        channel_id = TARGET_FORUM_ENDGAME
+    
     if not channel_id:
         await ctx.send(f"❌ **Foro {channel_type} no configurado**")
         return
@@ -1270,6 +1480,7 @@ async def reset_forum(ctx, channel_type: str = None):
 @bot.command(name='stats')
 async def banner_stats(ctx):
     banners = scraper.get_banners()
+    endgame = scraper.get_endgame_content()
     
     now = datetime.now()
     banners_actuales = 0
@@ -1293,20 +1504,21 @@ async def banner_stats(ctx):
     
     embed = discord.Embed(
         title="📊 **Estadísticas**",
-        description="Resumen de personajes 5★ en banner",
+        description="Resumen del juego",
         color=discord.Color.blue()
     )
     
     embed.add_field(name="🔴 Banners actuales", value=str(banners_actuales), inline=True)
     embed.add_field(name="🟡 Banners próximos", value=str(banners_proximos), inline=True)
     embed.add_field(name="✨ Personajes 5★ únicos", value=str(total_personajes_5star), inline=True)
+    embed.add_field(name="⚔️ Modos End Game", value=str(len(endgame)), inline=True)
     
     await ctx.send(embed=embed)
 
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
-        await ctx.send("❌ **Comando no encontrado.** Usa `!personajes` para ver los personajes 5★ en banner.")
+        await ctx.send("❌ **Comando no encontrado.** Usa `!personajes` o `!endgame`.")
     elif isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ **No tienes permiso para usar este comando.**")
     elif isinstance(error, discord.Forbidden):
