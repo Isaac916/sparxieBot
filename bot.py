@@ -133,99 +133,99 @@ class BannerScraper:
         }
     
     def extract_image_url(self, img_tag) -> str:
-    """Extrae la URL completa de la imagen de manera más robusta"""
-    if not img_tag:
-        logger.debug("No img_tag found")
-        return self.default_image
-    
-    url = None
-    
-    try:
-        # Método 1: Buscar en picture > source (prioridad máxima)
-        picture = img_tag.find_parent('picture')
-        if picture:
-            source = picture.find('source')
-            if source and source.get('srcset'):
-                srcset = source.get('srcset')
-                logger.debug(f"Found picture source srcset: {srcset[:100]}...")
-                # Tomar la URL de mayor resolución
-                urls = srcset.split(',')
-                if urls:
-                    last_url = urls[-1].strip()
-                    if ' ' in last_url:
-                        last_url = last_url.split(' ')[0]
-                    
-                    if last_url.startswith('http'):
-                        url = last_url
-                    elif last_url.startswith('/'):
-                        url = f"https://www.prydwen.gg{last_url}"
-                    elif last_url.startswith('static'):
-                        url = f"https://www.prydwen.gg/{last_url}"
-                    
-                    if url:
-                        logger.debug(f"URL from picture source: {url}")
+        """Extrae la URL completa de la imagen de manera más robusta"""
+        if not img_tag:
+            logger.debug("No img_tag found")
+            return self.default_image
         
-        # Método 2: srcset del propio img
-        if not url:
-            srcset = img_tag.get('srcset', '')
-            if srcset:
-                logger.debug(f"Found img srcset: {srcset[:100]}...")
-                urls = srcset.split(',')
-                if urls:
-                    last_url = urls[-1].strip()
-                    if ' ' in last_url:
-                        last_url = last_url.split(' ')[0]
-                    
-                    if last_url.startswith('http'):
-                        url = last_url
-                    elif last_url.startswith('/'):
-                        url = f"https://www.prydwen.gg{last_url}"
-                    elif last_url.startswith('static'):
-                        url = f"https://www.prydwen.gg/{last_url}"
-                    
-                    if url:
-                        logger.debug(f"URL from img srcset: {url}")
+        url = None
         
-        # Método 3: src
-        if not url:
-            src = img_tag.get('src', '')
-            if src and not src.startswith('data:'):
-                logger.debug(f"Found img src: {src}")
-                if src.startswith('http'):
-                    url = src
-                elif src.startswith('/'):
-                    url = f"https://www.prydwen.gg{src}"
-                elif src.startswith('static'):
-                    url = f"https://www.prydwen.gg/{src}"
-                
-                if url:
-                    logger.debug(f"URL from img src: {url}")
-        
-        # Limpiar la URL y asegurar que sea válida
-        if url:
-            # Eliminar parámetros de query y fragmentos
-            url = url.split('?')[0].split('#')[0]
+        try:
+            # Método 1: Buscar en picture > source (prioridad máxima)
+            picture = img_tag.find_parent('picture')
+            if picture:
+                source = picture.find('source')
+                if source and source.get('srcset'):
+                    srcset = source.get('srcset')
+                    logger.debug(f"Found picture source srcset: {srcset[:100]}...")
+                    # Tomar la URL de mayor resolución
+                    urls = srcset.split(',')
+                    if urls:
+                        last_url = urls[-1].strip()
+                        if ' ' in last_url:
+                            last_url = last_url.split(' ')[0]
+                        
+                        if last_url.startswith('http'):
+                            url = last_url
+                        elif last_url.startswith('/'):
+                            url = f"https://www.prydwen.gg{last_url}"
+                        elif last_url.startswith('static'):
+                            url = f"https://www.prydwen.gg/{last_url}"
+                        
+                        if url:
+                            logger.debug(f"URL from picture source: {url}")
             
-            # Verificar que sea una URL HTTP/HTTPS válida
-            if url.startswith(('http://', 'https://')):
-                logger.info(f"✅ Imagen encontrada: {url}")
-                return url
-            elif url.startswith('/'):
-                full_url = f"https://www.prydwen.gg{url}"
-                logger.info(f"✅ Imagen encontrada (con dominio): {full_url}")
-                return full_url
-            else:
-                full_url = f"https://www.prydwen.gg/{url}"
-                logger.info(f"✅ Imagen encontrada (con dominio): {full_url}")
-                return full_url
+            # Método 2: srcset del propio img
+            if not url:
+                srcset = img_tag.get('srcset', '')
+                if srcset:
+                    logger.debug(f"Found img srcset: {srcset[:100]}...")
+                    urls = srcset.split(',')
+                    if urls:
+                        last_url = urls[-1].strip()
+                        if ' ' in last_url:
+                            last_url = last_url.split(' ')[0]
+                        
+                        if last_url.startswith('http'):
+                            url = last_url
+                        elif last_url.startswith('/'):
+                            url = f"https://www.prydwen.gg{last_url}"
+                        elif last_url.startswith('static'):
+                            url = f"https://www.prydwen.gg/{last_url}"
+                        
+                        if url:
+                            logger.debug(f"URL from img srcset: {url}")
+            
+            # Método 3: src
+            if not url:
+                src = img_tag.get('src', '')
+                if src and not src.startswith('data:'):
+                    logger.debug(f"Found img src: {src}")
+                    if src.startswith('http'):
+                        url = src
+                    elif src.startswith('/'):
+                        url = f"https://www.prydwen.gg{src}"
+                    elif src.startswith('static'):
+                        url = f"https://www.prydwen.gg/{src}"
+                    
+                    if url:
+                        logger.debug(f"URL from img src: {url}")
+            
+            # Limpiar la URL y asegurar que sea válida
+            if url:
+                # Eliminar parámetros de query y fragmentos
+                url = url.split('?')[0].split('#')[0]
+                
+                # Verificar que sea una URL HTTP/HTTPS válida
+                if url.startswith(('http://', 'https://')):
+                    logger.info(f"✅ Imagen encontrada: {url}")
+                    return url
+                elif url.startswith('/'):
+                    full_url = f"https://www.prydwen.gg{url}"
+                    logger.info(f"✅ Imagen encontrada (con dominio): {full_url}")
+                    return full_url
+                else:
+                    full_url = f"https://www.prydwen.gg/{url}"
+                    logger.info(f"✅ Imagen encontrada (con dominio): {full_url}")
+                    return full_url
+            
+            logger.warning("No se encontró URL de imagen válida")
+            
+        except Exception as e:
+            logger.error(f"Error extrayendo URL: {e}")
         
-        logger.warning("No se encontró URL de imagen válida")
-        
-    except Exception as e:
-        logger.error(f"Error extrayendo URL: {e}")
-    
-    logger.info(f"⚠️ Usando imagen por defecto: {self.default_image}")
-    return self.default_image
+        logger.info(f"⚠️ Usando imagen por defecto: {self.default_image}")
+        return self.default_image
     
     def parse_date_from_duration(self, duration_text):
         """Parsea las fechas de inicio y fin del texto de duración"""
@@ -282,75 +282,75 @@ class BannerScraper:
         return is_warp and not is_game_event and has_event_name and has_duration
     
     def parse_character(self, card) -> dict:
-    """Parsea un personaje de avatar-card y extrae su imagen"""
-    try:
-        a_tag = card.find('a')
-        name = "Unknown"
-        char_key = ""
-        
-        if a_tag and a_tag.get('href'):
-            href = a_tag.get('href', '')
-            char_key = href.split('/')[-1]
-            name = char_key.replace('-', ' ').title()
-            logger.debug(f"Parsing character: {name} (key: {char_key})")
-        
-        img_tag = card.find('img')
-        image_url = self.extract_image_url(img_tag)
-        
-        element = "Unknown"
-        element_tag = card.find('span', class_='floating-element')
-        if element_tag:
-            element_img = element_tag.find('img')
-            if element_img and element_img.get('alt'):
-                element = element_img.get('alt')
-                logger.debug(f"Element found: {element}")
-        
-        card_html = str(card)
-        rarity = 5 if 'rarity-5' in card_html or 'rar-5' in card_html else 4
-        
-        logger.info(f"📸 Personaje {name} - Imagen: {image_url}")
-        
-        return {
-            'name': name,
-            'image': image_url,
-            'element': element,
-            'rarity': rarity
-        }
-    except Exception as e:
-        logger.error(f"Error parseando personaje: {e}")
-        return {
-            'name': "Unknown",
-            'image': self.default_image,
-            'element': "Unknown",
-            'rarity': 4
-        }
+        """Parsea un personaje de avatar-card y extrae su imagen"""
+        try:
+            a_tag = card.find('a')
+            name = "Unknown"
+            char_key = ""
+            
+            if a_tag and a_tag.get('href'):
+                href = a_tag.get('href', '')
+                char_key = href.split('/')[-1]
+                name = char_key.replace('-', ' ').title()
+                logger.debug(f"Parsing character: {name} (key: {char_key})")
+            
+            img_tag = card.find('img')
+            image_url = self.extract_image_url(img_tag)
+            
+            element = "Unknown"
+            element_tag = card.find('span', class_='floating-element')
+            if element_tag:
+                element_img = element_tag.find('img')
+                if element_img and element_img.get('alt'):
+                    element = element_img.get('alt')
+                    logger.debug(f"Element found: {element}")
+            
+            card_html = str(card)
+            rarity = 5 if 'rarity-5' in card_html or 'rar-5' in card_html else 4
+            
+            logger.info(f"📸 Personaje {name} - Imagen: {image_url}")
+            
+            return {
+                'name': name,
+                'image': image_url,
+                'element': element,
+                'rarity': rarity
+            }
+        except Exception as e:
+            logger.error(f"Error parseando personaje: {e}")
+            return {
+                'name': "Unknown",
+                'image': self.default_image,
+                'element': "Unknown",
+                'rarity': 4
+            }
     
-   def parse_light_cone(self, cone_item) -> dict:
-    """Parsea un cono de luz y extrae su imagen"""
-    try:
-        name_tag = cone_item.find('span', class_='hsr-set-name')
-        name = name_tag.text.strip() if name_tag else "Unknown"
-        logger.debug(f"Parsing light cone: {name}")
-        
-        img_tag = cone_item.find('img')
-        image_url = self.extract_image_url(img_tag)
-        
-        cone_html = str(cone_item)
-        rarity = 5 if 'rarity-5' in cone_html or 'rar-5' in cone_html else 4
-        
-        logger.info(f"📸 Cono {name} - Imagen: {image_url}")
-        
-        return {
-            'name': name,
-            'image': image_url,
-            'rarity': rarity
-        }
-    except Exception:
-        return {
-            'name': "Unknown Cone",
-            'image': self.default_image,
-            'rarity': 4
-        }
+    def parse_light_cone(self, cone_item) -> dict:
+        """Parsea un cono de luz y extrae su imagen"""
+        try:
+            name_tag = cone_item.find('span', class_='hsr-set-name')
+            name = name_tag.text.strip() if name_tag else "Unknown"
+            logger.debug(f"Parsing light cone: {name}")
+            
+            img_tag = cone_item.find('img')
+            image_url = self.extract_image_url(img_tag)
+            
+            cone_html = str(cone_item)
+            rarity = 5 if 'rarity-5' in cone_html or 'rar-5' in cone_html else 4
+            
+            logger.info(f"📸 Cono {name} - Imagen: {image_url}")
+            
+            return {
+                'name': name,
+                'image': image_url,
+                'rarity': rarity
+            }
+        except Exception:
+            return {
+                'name': "Unknown Cone",
+                'image': self.default_image,
+                'rarity': 4
+            }
     
     def extract_characters(self, item):
         """Extrae personajes 5★ y 4★ de un banner"""
