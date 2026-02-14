@@ -27,7 +27,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 # ============================================
-# BASE DE DATOS DE ÍCONOS DE PERSONAJES
+# BASE DE DATOS DE ÍCONOS DE PERSONAJES 5★
 # ============================================
 
 CHARACTER_ICONS = [
@@ -494,91 +494,105 @@ CHARACTER_ICONS = [
         "rarity": 5,
         "path": "Elation",
         "element": "Physical"
+    },
+    {
+        "id": "march-7th-evernight",
+        "name": "March 7th Evernight",
+        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/b/b7/Character_Evernight_Icon.png",
+        "rarity": 5,
+        "path": "Unknown",
+        "element": "Unknown"
     }
 ]
 
-# Crear diccionarios para búsqueda rápida
+# Crear diccionarios para búsqueda rápida (solo personajes 5★)
 CHARACTER_ICON_MAP = {}
 CHARACTER_INFO_MAP = {}
+
 for char in CHARACTER_ICONS:
-    normalized_name = char['name'].lower().strip()
-    CHARACTER_ICON_MAP[normalized_name] = char['image']
-    CHARACTER_INFO_MAP[normalized_name] = {
-        'path': char['path'],
-        'element': char['element'],
-        'rarity': char['rarity']
-    }
-    CHARACTER_ICON_MAP[char['id'].lower()] = char['image']
-    CHARACTER_INFO_MAP[char['id'].lower()] = {
-        'path': char['path'],
-        'element': char['element'],
-        'rarity': char['rarity']
-    }
-    simple_name = re.sub(r'[^a-z0-9]', '', normalized_name)
-    CHARACTER_ICON_MAP[simple_name] = char['image']
-    CHARACTER_INFO_MAP[simple_name] = {
-        'path': char['path'],
-        'element': char['element'],
-        'rarity': char['rarity']
-    }
+    # Solo incluir personajes 5★ en el mapa
+    if char['rarity'] == 5:
+        # Versión normalizada del nombre
+        normalized_name = char['name'].lower().strip()
+        CHARACTER_ICON_MAP[normalized_name] = char['image']
+        CHARACTER_INFO_MAP[normalized_name] = {
+            'path': char['path'],
+            'element': char['element'],
+            'rarity': char['rarity']
+        }
+        
+        # También por id
+        char_id = char['id'].lower()
+        CHARACTER_ICON_MAP[char_id] = char['image']
+        CHARACTER_INFO_MAP[char_id] = {
+            'path': char['path'],
+            'element': char['element'],
+            'rarity': char['rarity']
+        }
+        
+        # Versión sin caracteres especiales
+        simple_name = re.sub(r'[^a-z0-9]', '', normalized_name)
+        CHARACTER_ICON_MAP[simple_name] = char['image']
+        CHARACTER_INFO_MAP[simple_name] = {
+            'path': char['path'],
+            'element': char['element'],
+            'rarity': char['rarity']
+        }
 
 DEFAULT_IMAGE = "https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png"
 
 def get_character_info(character_name):
-    """Obtiene toda la información de un personaje por su nombre"""
+    """Obtiene información SOLO de personajes 5★"""
     if not character_name:
-        return {
-            'image': DEFAULT_IMAGE,
-            'path': 'Unknown',
-            'element': 'Unknown',
-            'rarity': 4
-        }
+        return None
     
+    # Normalizar el nombre de búsqueda
     search_name = character_name.lower().strip()
     
-    # Búsqueda exacta
+    # PASO 1: Búsqueda exacta
     if search_name in CHARACTER_INFO_MAP:
-        info = CHARACTER_INFO_MAP[search_name]
-        logger.info(f"✅ Información encontrada para {character_name}")
+        logger.info(f"✅ Coincidencia exacta para 5★: {character_name}")
         return {
+            'name': character_name,
             'image': CHARACTER_ICON_MAP[search_name],
-            'path': info['path'],
-            'element': info['element'],
-            'rarity': info['rarity']
+            'path': CHARACTER_INFO_MAP[search_name]['path'],
+            'element': CHARACTER_INFO_MAP[search_name]['element'],
+            'rarity': 5
         }
     
-    # Búsqueda por coincidencia parcial
+    # PASO 2: Búsqueda por nombre simplificado
+    search_simple = re.sub(r'[^a-z0-9]', '', search_name)
     for key, info in CHARACTER_INFO_MAP.items():
-        if search_name in key or key in search_name:
-            logger.info(f"✅ Información encontrada (coincidencia parcial) para {character_name}")
+        key_simple = re.sub(r'[^a-z0-9]', '', key)
+        if search_simple == key_simple:
+            logger.info(f"✅ Coincidencia simplificada para 5★: {character_name}")
             return {
+                'name': character_name,
                 'image': CHARACTER_ICON_MAP[key],
                 'path': info['path'],
                 'element': info['element'],
-                'rarity': info['rarity']
+                'rarity': 5
             }
     
-    # Búsqueda por similitud
-    try:
-        matches = difflib.get_close_matches(search_name, CHARACTER_INFO_MAP.keys(), n=1, cutoff=0.6)
-        if matches:
-            logger.info(f"✅ Información encontrada (similitud) para {character_name}")
-            return {
-                'image': CHARACTER_ICON_MAP[matches[0]],
-                'path': CHARACTER_INFO_MAP[matches[0]]['path'],
-                'element': CHARACTER_INFO_MAP[matches[0]]['element'],
-                'rarity': CHARACTER_INFO_MAP[matches[0]]['rarity']
-            }
-    except:
-        pass
+    # PASO 3: Búsqueda por coincidencia parcial (solo si es claramente el mismo personaje)
+    for key, info in CHARACTER_INFO_MAP.items():
+        # Evitar coincidencias cortas como "Hanya" con "Anaxa"
+        if len(key) >= 4 and len(search_name) >= 4:
+            if key in search_name or search_name in key:
+                # Verificar que no sea una coincidencia falsa
+                if key not in ['hanya', 'pela', 'qingque']:  # Excluir nombres 4★ conocidos
+                    logger.info(f"✅ Coincidencia parcial para 5★: {character_name} con {key}")
+                    return {
+                        'name': character_name,
+                        'image': CHARACTER_ICON_MAP[key],
+                        'path': info['path'],
+                        'element': info['element'],
+                        'rarity': 5
+                    }
     
-    logger.warning(f"⚠️ No se encontró información para {character_name}, usando valores por defecto")
-    return {
-        'image': DEFAULT_IMAGE,
-        'path': 'Unknown',
-        'element': 'Unknown',
-        'rarity': 4
-    }
+    # No es un personaje 5★ conocido
+    logger.info(f"⏩ {character_name} no es un personaje 5★ reconocido")
+    return None
 
 # ============================================
 # CLASE BANNER
@@ -588,7 +602,7 @@ class Banner:
                  featured_5star_char: list, featured_4star_char: list, 
                  featured_5star_cone: list, featured_4star_cone: list,
                  duration_text: str = "", start_date=None, end_date=None,
-                 banner_id: str = "", characters_data: list = None, cones_data: list = None):
+                 banner_id: str = ""):
         self.name = name
         self.banner_type = banner_type
         self.time_remaining = time_remaining
@@ -600,8 +614,6 @@ class Banner:
         self.start_date = start_date
         self.end_date = end_date
         self.banner_id = banner_id
-        self.characters_data = characters_data if characters_data else []
-        self.cones_data = cones_data if cones_data else []
 
 # ============================================
 # CLASE PARA GESTIONAR PUBLICACIONES DE FORO
@@ -732,86 +744,52 @@ class BannerScraper:
                 char_key = href.split('/')[-1]
                 name = char_key.replace('-', ' ').title()
             
-            # Obtener toda la información del personaje de nuestra base de datos
-            char_info = get_character_info(name)
+            # Intentar obtener elemento del HTML
+            element = "Unknown"
+            element_tag = card.find('span', class_='floating-element')
+            if element_tag:
+                element_img = element_tag.find('img')
+                if element_img and element_img.get('alt'):
+                    element = element_img.get('alt')
             
-            # Intentar obtener elemento del HTML como respaldo
-            element = char_info['element']
-            if element == 'Unknown':
-                element_tag = card.find('span', class_='floating-element')
-                if element_tag:
-                    element_img = element_tag.find('img')
-                    if element_img and element_img.get('alt'):
-                        element = element_img.get('alt')
-            
+            # Determinar rareza por el HTML
             card_html = str(card)
-            rarity = char_info['rarity']
-            if rarity == 4 and ('rarity-5' in card_html or 'rar-5' in card_html):
-                rarity = 5
+            html_rarity = 5 if 'rarity-5' in card_html or 'rar-5' in card_html else 4
             
             return {
                 'name': name,
-                'image': char_info['image'],
                 'element': element,
-                'rarity': rarity,
-                'path': char_info['path']
+                'rarity': html_rarity,
+                'char_key': char_key
             }
         except Exception as e:
             logger.error(f"Error parseando personaje: {e}")
-            return {
-                'name': "Unknown",
-                'image': DEFAULT_IMAGE,
-                'element': "Unknown",
-                'rarity': 4,
-                'path': "Unknown"
-            }
-    
-    def parse_light_cone(self, cone_item) -> dict:
-        try:
-            name_tag = cone_item.find('span', class_='hsr-set-name')
-            name = name_tag.text.strip() if name_tag else "Unknown"
-            
-            cone_html = str(cone_item)
-            rarity = 5 if 'rarity-5' in cone_html or 'rar-5' in cone_html else 4
-            
-            return {
-                'name': name,
-                'image': DEFAULT_IMAGE,
-                'rarity': rarity
-            }
-        except Exception:
-            return {
-                'name': "Unknown Cone",
-                'image': DEFAULT_IMAGE,
-                'rarity': 4
-            }
+            return None
     
     def extract_characters(self, item):
         featured_5star_char = []
         featured_4star_char = []
-        all_characters = []
         
         char_sections = item.find_all('div', class_='featured-characters')
         for section in char_sections:
             prev_p = section.find_previous('p', class_='featured')
-            is_five_star = prev_p and '5★' in prev_p.text if prev_p else False
+            is_five_star_section = prev_p and '5★' in prev_p.text if prev_p else False
             
             cards = section.find_all('div', class_='avatar-card')
             for card in cards:
                 char_data = self.parse_character(card)
                 if char_data:
-                    all_characters.append(char_data)
-                    if is_five_star or char_data['rarity'] == 5:
+                    # Solo añadir a la lista correspondiente según la rareza del HTML
+                    if char_data['rarity'] == 5:
                         featured_5star_char.append(char_data)
                     else:
                         featured_4star_char.append(char_data)
         
-        return featured_5star_char, featured_4star_char, all_characters
+        return featured_5star_char, featured_4star_char
     
     def extract_light_cones(self, item):
         featured_5star_cone = []
         featured_4star_cone = []
-        all_cones = []
         
         cone_sections = item.find_all('div', class_='featured-cone')
         for section in cone_sections:
@@ -820,15 +798,24 @@ class BannerScraper:
             
             cone_items = section.find_all('div', class_='accordion-item')
             for cone in cone_items:
-                cone_data = self.parse_light_cone(cone)
-                if cone_data:
-                    all_cones.append(cone_data)
-                    if is_five_star or cone_data['rarity'] == 5:
-                        featured_5star_cone.append(cone_data)
-                    else:
-                        featured_4star_cone.append(cone_data)
+                # Por ahora, simplificamos los conos
+                name_tag = cone.find('span', class_='hsr-set-name')
+                name = name_tag.text.strip() if name_tag else "Unknown"
+                
+                cone_html = str(cone)
+                rarity = 5 if 'rarity-5' in cone_html or 'rar-5' in cone_html else 4
+                
+                cone_data = {
+                    'name': name,
+                    'rarity': rarity
+                }
+                
+                if is_five_star or rarity == 5:
+                    featured_5star_cone.append(cone_data)
+                else:
+                    featured_4star_cone.append(cone_data)
         
-        return featured_5star_cone, featured_4star_cone, all_cones
+        return featured_5star_cone, featured_4star_cone
     
     def classify_banner_type(self, item, chars5, chars4, cones5, cones4) -> str:
         has_chars = len(chars5) + len(chars4) > 0
@@ -881,8 +868,8 @@ class BannerScraper:
                     
                     start_date, end_date = self.parse_date_from_duration(duration_text)
                     
-                    featured_5star_char, featured_4star_char, all_characters = self.extract_characters(item)
-                    featured_5star_cone, featured_4star_cone, all_cones = self.extract_light_cones(item)
+                    featured_5star_char, featured_4star_char = self.extract_characters(item)
+                    featured_5star_cone, featured_4star_cone = self.extract_light_cones(item)
                     
                     banner_type = self.classify_banner_type(item, featured_5star_char, featured_4star_char, 
                                                             featured_5star_cone, featured_4star_cone)
@@ -900,13 +887,12 @@ class BannerScraper:
                         duration_text=duration_text,
                         start_date=start_date,
                         end_date=end_date,
-                        banner_id=banner_id,
-                        characters_data=all_characters,
-                        cones_data=all_cones
+                        banner_id=banner_id
                     )
                     banners.append(banner)
                     
                     logger.info(f"✅ Warp {warp_count}: {banner_name}")
+                    logger.info(f"   - Personajes 5★: {[c['name'] for c in featured_5star_char]}")
                     
                 except Exception as e:
                     logger.error(f"Error procesando banner: {e}")
@@ -959,22 +945,18 @@ def get_element_emoji(element: str) -> str:
     }
     return element_emojis.get(element, '❓')
 
-async def create_character_post(forum_channel, character, banner_info, status):
-    """Crea una publicación en el foro para un personaje específico (solo 5★)"""
-    
-    # Solo procesar personajes 5★
-    if character['rarity'] != 5:
-        return None
+async def create_character_post(forum_channel, character_name, character_info, banner_info, status):
+    """Crea una publicación en el foro para un personaje 5★"""
     
     status_emoji = "🔴" if status == "actual" else "🟡"
     
     # Título: nombre del personaje
-    thread_name = f"{status_emoji} {character['name']}"
+    thread_name = f"{status_emoji} {character_name}"
     
     # Crear la publicación con la imagen como contenido principal
     thread = await forum_channel.create_thread(
         name=thread_name,
-        content=character['image'],  # La imagen como primer mensaje
+        content=character_info['image'],
         auto_archive_duration=10080
     )
     
@@ -984,15 +966,15 @@ async def create_character_post(forum_channel, character, banner_info, status):
     duration_clean = banner_info['duration_text'].replace('Event Duration', '').strip()
     
     info_text = (
-        f"**{character['name']}**\n"
-        f"{get_path_emoji(character['path'])} {character['path']}\n"
-        f"{get_element_emoji(character['element'])} {character['element']}\n"
+        f"**{character_name}**\n"
+        f"{get_path_emoji(character_info['path'])} {character_info['path']}\n"
+        f"{get_element_emoji(character_info['element'])} {character_info['element']}\n"
         f"⏳ **Duración:** {duration_clean}"
     )
     
     await thread_obj.send(info_text)
     
-    logger.info(f"✅ Publicación creada para personaje 5★: {character['name']}")
+    logger.info(f"✅ Publicación creada para personaje 5★: {character_name}")
     
     return thread_obj
 
@@ -1028,7 +1010,8 @@ async def update_character_posts(channel_id, banners, now, status):
     
     try:
         # Recopilar todos los personajes 5★ de los banners con su información
-        characters_with_banner = []
+        characters_to_post = []
+        processed_names = set()  # Para evitar duplicados
         
         for banner in banners:
             # Determinar si el banner es actual o próximo
@@ -1045,19 +1028,32 @@ async def update_character_posts(channel_id, banners, now, status):
             if (status == "actual" and not is_current) or (status == "proximo" and is_current):
                 continue
             
-            banner_info = {
-                'time_remaining': banner.time_remaining,
-                'duration_text': banner.duration_text
-            }
-            
-            # Añadir solo personajes 5★
-            for char in banner.featured_5star_char:
-                characters_with_banner.append({
-                    'character': char,
-                    'banner_info': banner_info
-                })
+            # Procesar personajes 5★
+            for char_data in banner.featured_5star_char:
+                char_name = char_data['name']
+                
+                # Evitar duplicados
+                if char_name in processed_names:
+                    continue
+                
+                # Obtener información completa del personaje
+                char_info = get_character_info(char_name)
+                
+                if char_info:
+                    characters_to_post.append({
+                        'name': char_name,
+                        'info': char_info,
+                        'banner_info': {
+                            'time_remaining': banner.time_remaining,
+                            'duration_text': banner.duration_text
+                        }
+                    })
+                    processed_names.add(char_name)
+                    logger.info(f"📌 Personaje 5★ encontrado: {char_name}")
+                else:
+                    logger.info(f"⏩ {char_name} no es 5★ o no está en la base de datos")
         
-        logger.info(f"Foro {channel.name}: {len(characters_with_banner)} personajes 5★ encontrados")
+        logger.info(f"Foro {channel.name}: {len(characters_to_post)} personajes 5★ únicos para publicar")
         
         # Obtener hilos activos
         active_threads = []
@@ -1068,33 +1064,38 @@ async def update_character_posts(channel_id, banners, now, status):
         # Mapear hilos existentes por nombre de personaje
         existing_posts = {}
         for thread in active_threads:
-            for item in characters_with_banner:
-                if item['character']['name'] in thread.name:
-                    char_id = re.sub(r'[^a-zA-Z0-9]', '', item['character']['name'].lower())
+            for char_data in characters_to_post:
+                if char_data['name'] in thread.name:
+                    char_id = re.sub(r'[^a-zA-Z0-9]', '', char_data['name'].lower())
                     existing_posts[char_id] = thread
                     break
         
         # Crear nuevas publicaciones para personajes que no existen
-        for item in characters_with_banner:
-            char = item['character']
-            
-            char_id = re.sub(r'[^a-zA-Z0-9]', '', char['name'].lower())
+        for char_data in characters_to_post:
+            char_name = char_data['name']
+            char_id = re.sub(r'[^a-zA-Z0-9]', '', char_name.lower())
             
             if char_id in existing_posts:
-                logger.info(f"⏩ Hilo ya existe para: {char['name']}")
+                logger.info(f"⏩ Hilo ya existe para: {char_name}")
             else:
                 # Crear nueva publicación
                 try:
-                    thread = await create_character_post(channel, char, item['banner_info'], status)
-                    if thread:  # Solo si se creó (siempre será 5★)
+                    thread = await create_character_post(
+                        channel, 
+                        char_name, 
+                        char_data['info'], 
+                        char_data['banner_info'], 
+                        status
+                    )
+                    if thread:
                         forum_manager.set_post_id(channel_id, char_id, thread.id)
-                        logger.info(f"✅ Publicación creada: {char['name']}")
+                        logger.info(f"✅ Publicación creada: {char_name}")
                 except Exception as e:
-                    logger.error(f"Error creando publicación {char['name']}: {e}")
+                    logger.error(f"Error creando publicación {char_name}: {e}")
             
             await asyncio.sleep(1)
         
-        logger.info(f"✅ Foro {channel.name} actualizado con {len(characters_with_banner)} personajes 5★")
+        logger.info(f"✅ Foro {channel.name} actualizado con {len(characters_to_post)} personajes 5★")
         
     except Exception as e:
         logger.error(f"❌ Error actualizando foro {channel.name}: {e}")
@@ -1103,7 +1104,7 @@ async def update_character_posts(channel_id, banners, now, status):
 # VARIABLES DE ENTORNO
 # ============================================
 logger.info("=" * 60)
-logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - SOLO 5★ CON DURACIÓN")
+logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - SOLO PERSONAJES 5★ PRINCIPALES")
 logger.info("=" * 60)
 
 TOKEN = os.environ.get('DISCORD_TOKEN')
@@ -1176,6 +1177,7 @@ async def personajes_command(ctx):
         now = datetime.now()
         personajes_actuales = []
         personajes_proximos = []
+        processed_names = set()
         
         for banner in all_banners:
             is_current = False
@@ -1189,12 +1191,14 @@ async def personajes_command(ctx):
             
             target_list = personajes_actuales if is_current else personajes_proximos
             
-            # Solo personajes 5★
+            # Solo personajes 5★ y sin duplicados
             for char in banner.featured_5star_char:
-                target_list.append({
-                    'name': char['name'],
-                    'time': banner.time_remaining
-                })
+                if char['name'] not in processed_names:
+                    target_list.append({
+                        'name': char['name'],
+                        'time': banner.time_remaining
+                    })
+                    processed_names.add(char['name'])
         
         await loading_msg.delete()
         
@@ -1271,6 +1275,7 @@ async def banner_stats(ctx):
     banners_actuales = 0
     banners_proximos = 0
     total_personajes_5star = 0
+    personajes_set = set()
     
     for banner in banners:
         if banner.end_date and banner.end_date > now:
@@ -1281,7 +1286,10 @@ async def banner_stats(ctx):
             else:
                 banners_actuales += 1
         
-        total_personajes_5star += len(banner.featured_5star_char)
+        for char in banner.featured_5star_char:
+            if char['name'] not in personajes_set:
+                total_personajes_5star += 1
+                personajes_set.add(char['name'])
     
     embed = discord.Embed(
         title="📊 **Estadísticas**",
@@ -1291,7 +1299,7 @@ async def banner_stats(ctx):
     
     embed.add_field(name="🔴 Banners actuales", value=str(banners_actuales), inline=True)
     embed.add_field(name="🟡 Banners próximos", value=str(banners_proximos), inline=True)
-    embed.add_field(name="✨ Personajes 5★", value=str(total_personajes_5star), inline=True)
+    embed.add_field(name="✨ Personajes 5★ únicos", value=str(total_personajes_5star), inline=True)
     
     await ctx.send(embed=embed)
 
