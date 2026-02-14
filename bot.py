@@ -657,12 +657,15 @@ async def update_forum_channel(channel_id, banners, status):
     try:
         # Obtener hilos activos en el foro
         active_threads = []
+        
+        # Los hilos activos normales (no archivados)
+        active_threads.extend(channel.threads)
+        
+        # Hilos archivados - hay que iterar con async for
         async for thread in channel.archived_threads(limit=100):
             active_threads.append(thread)
-        async for thread in channel.threads:
-            active_threads.append(thread)
         
-        logger.info(f"Foro {channel.name}: {len(active_threads)} hilos activos")
+        logger.info(f"Foro {channel.name}: {len(active_threads)} hilos encontrados")
         
         # Mapear hilos existentes por ID de banner
         existing_posts = {}
