@@ -72,22 +72,6 @@ CHARACTER_ICONS = [
         "element": "Physical"
     },
     {
-        "id": "arlan",
-        "name": "Arlan",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/a/a9/Character_Arlan_Icon.png",
-        "rarity": 4,
-        "path": "Destruction",
-        "element": "Lightning"
-    },
-    {
-        "id": "asta",
-        "name": "Asta",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/9f/Character_Asta_Icon.png",
-        "rarity": 4,
-        "path": "Harmony",
-        "element": "Fire"
-    },
-    {
         "id": "aventurine",
         "name": "Aventurine",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/d/da/Character_Aventurine_Icon.png",
@@ -176,14 +160,6 @@ CHARACTER_ICONS = [
         "element": "Unknown"
     },
     {
-        "id": "dan-heng",
-        "name": "Dan Heng",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/1a/Character_Dan_Heng_Icon.png",
-        "rarity": 4,
-        "path": "The Hunt",
-        "element": "Wind"
-    },
-    {
         "id": "dan-heng-•-imbibitor-lunae",
         "name": "Dan Heng • Imbibitor Lunae",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/2a/Character_Dan_Heng_%E2%80%A2_Imbibitor_Lunae_Icon.png",
@@ -248,14 +224,6 @@ CHARACTER_ICONS = [
         "element": "Fire"
     },
     {
-        "id": "gallagher",
-        "name": "Gallagher",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/1/12/Character_Gallagher_Icon.png",
-        "rarity": 4,
-        "path": "Abundance",
-        "element": "Fire"
-    },
-    {
         "id": "gepard",
         "name": "Gepard",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/75/Character_Gepard_Icon.png",
@@ -264,43 +232,11 @@ CHARACTER_ICONS = [
         "element": "Ice"
     },
     {
-        "id": "guinaifen",
-        "name": "Guinaifen",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/98/Character_Guinaifen_Icon.png",
-        "rarity": 4,
-        "path": "Nihility",
-        "element": "Fire"
-    },
-    {
-        "id": "hanya",
-        "name": "Hanya",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/99/Character_Hanya_Icon.png",
-        "rarity": 4,
-        "path": "Harmony",
-        "element": "Physical"
-    },
-    {
-        "id": "herta",
-        "name": "Herta",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/b/bf/Character_Herta_Icon.png",
-        "rarity": 4,
-        "path": "Erudition",
-        "element": "Ice"
-    },
-    {
         "id": "himeko",
         "name": "Himeko",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/0/00/Character_Himeko_Icon.png",
         "rarity": 5,
         "path": "Erudition",
-        "element": "Fire"
-    },
-    {
-        "id": "hook",
-        "name": "Hook",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/d/d5/Character_Hook_Icon.png",
-        "rarity": 4,
-        "path": "Destruction",
         "element": "Fire"
     },
     {
@@ -376,60 +312,12 @@ CHARACTER_ICONS = [
         "element": "Fire"
     },
     {
-        "id": "luka",
-        "name": "Luka",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c7/Character_Luka_Icon.png",
-        "rarity": 4,
-        "path": "Nihility",
-        "element": "Physical"
-    },
-    {
         "id": "luocha",
         "name": "Luocha",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/20/Character_Luocha_Icon.png",
         "rarity": 5,
         "path": "Abundance",
         "element": "Imaginary"
-    },
-    {
-        "id": "lynx",
-        "name": "Lynx",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/6/6c/Character_Lynx_Icon.png",
-        "rarity": 4,
-        "path": "Abundance",
-        "element": "Quantum"
-    },
-    {
-        "id": "march-7th",
-        "name": "March 7th",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/d/d3/Character_March_7th_Icon.png",
-        "rarity": 4,
-        "path": "Preservation",
-        "element": "Ice"
-    },
-    {
-        "id": "march-7th",
-        "name": "March 7th",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/7b/Character_March_7th_%28The_Hunt%29_Icon.png",
-        "rarity": 4,
-        "path": "The Hunt",
-        "element": "Imaginary"
-    },
-    {
-        "id": "misha",
-        "name": "Misha",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/4d/Character_Misha_Icon.png",
-        "rarity": 4,
-        "path": "Destruction",
-        "element": "Ice"
-    },
-    {
-        "id": "moze",
-        "name": "Moze",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/25/Character_Moze_Icon.png",
-        "rarity": 4,
-        "path": "The Hunt",
-        "element": "Lightning"
     },
     {
         "id": "mydei",
@@ -440,36 +328,12 @@ CHARACTER_ICONS = [
         "element": "Imaginary"
     },
     {
-        "id": "natasha",
-        "name": "Natasha",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/6/61/Character_Natasha_Icon.png",
-        "rarity": 4,
-        "path": "Abundance",
-        "element": "Physical"
-    },
-    {
-        "id": "pela",
-        "name": "Pela",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/c/c2/Character_Pela_Icon.png",
-        "rarity": 4,
-        "path": "Nihility",
-        "element": "Ice"
-    },
-    {
         "id": "phainon",
         "name": "Phainon",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/e/ef/Character_Phainon_Icon.png",
         "rarity": 5,
         "path": "Unknown",
         "element": "Unknown"
-    },
-    {
-        "id": "qingque",
-        "name": "Qingque",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/2e/Character_Qingque_Icon.png",
-        "rarity": 4,
-        "path": "Erudition",
-        "element": "Quantum"
     },
     {
         "id": "rappa",
@@ -504,28 +368,12 @@ CHARACTER_ICONS = [
         "element": "Unknown"
     },
     {
-        "id": "sampo",
-        "name": "Sampo",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/5/53/Character_Sampo_Icon.png",
-        "rarity": 4,
-        "path": "Nihility",
-        "element": "Wind"
-    },
-    {
         "id": "seele",
         "name": "Seele",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/9a/Character_Seele_Icon.png",
         "rarity": 5,
         "path": "The Hunt",
         "element": "Quantum"
-    },
-    {
-        "id": "serval",
-        "name": "Serval",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/7c/Character_Serval_Icon.png",
-        "rarity": 4,
-        "path": "Erudition",
-        "element": "Lightning"
     },
     {
         "id": "silver-wolf",
@@ -552,14 +400,6 @@ CHARACTER_ICONS = [
         "element": "Imaginary"
     },
     {
-        "id": "sushang",
-        "name": "Sushang",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/9/97/Character_Sushang_Icon.png",
-        "rarity": 4,
-        "path": "The Hunt",
-        "element": "Physical"
-    },
-    {
         "id": "the-dahlia",
         "name": "The Dahlia",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/7/71/Character_The_Dahlia_Icon.png",
@@ -574,14 +414,6 @@ CHARACTER_ICONS = [
         "rarity": 5,
         "path": "Erudition",
         "element": "Ice"
-    },
-    {
-        "id": "tingyun",
-        "name": "Tingyun",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/4/4f/Character_Tingyun_Icon.png",
-        "rarity": 4,
-        "path": "Harmony",
-        "element": "Lightning"
     },
     {
         "id": "topaz-&-numby",
@@ -640,28 +472,12 @@ CHARACTER_ICONS = [
         "element": "Imaginary"
     },
     {
-        "id": "xueyi",
-        "name": "Xueyi",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/2/23/Character_Xueyi_Icon.png",
-        "rarity": 4,
-        "path": "Destruction",
-        "element": "Quantum"
-    },
-    {
         "id": "yanqing",
         "name": "Yanqing",
         "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/5/57/Character_Yanqing_Icon.png",
         "rarity": 5,
         "path": "The Hunt",
         "element": "Ice"
-    },
-    {
-        "id": "yukong",
-        "name": "Yukong",
-        "image": "https://static.wikia.nocookie.net/houkai-star-rail/images/3/32/Character_Yukong_Icon.png",
-        "rarity": 4,
-        "path": "Harmony",
-        "element": "Imaginary"
     },
     {
         "id": "yunli",
@@ -1144,37 +960,44 @@ def get_element_emoji(element: str) -> str:
     return element_emojis.get(element, '❓')
 
 async def create_character_post(forum_channel, character, banner_info, status):
-    """Crea una publicación en el foro para un personaje específico"""
+    """Crea una publicación en el foro para un personaje específico (solo 5★)"""
+    
+    # Solo procesar personajes 5★
+    if character['rarity'] != 5:
+        return None
     
     status_emoji = "🔴" if status == "actual" else "🟡"
     
     # Título: nombre del personaje
     thread_name = f"{status_emoji} {character['name']}"
     
-    # Crear las etiquetas del foro (si el foro las soporta)
-    # En Discord, las etiquetas se pueden aplicar al crear el hilo
-    # Pero necesitamos los IDs de las etiquetas del servidor
-    
-    # Crear la publicación con la imagen como contenido
+    # Crear la publicación con la imagen como contenido principal
     thread = await forum_channel.create_thread(
         name=thread_name,
-        content=character['image'],  # La imagen como contenido principal
+        content=character['image'],  # La imagen como primer mensaje
         auto_archive_duration=10080
     )
     
     thread_obj = thread[0] if isinstance(thread, tuple) else thread
     
-    # Añadir la información del personaje como un mensaje adicional
-    info_text = f"{character['name']}\n{get_path_emoji(character['path'])} {character['path']}\n{get_element_emoji(character['element'])} {character['element']}"
+    # Formatear la información del personaje incluyendo la duración
+    duration_clean = banner_info['duration_text'].replace('Event Duration', '').strip()
+    
+    info_text = (
+        f"**{character['name']}**\n"
+        f"{get_path_emoji(character['path'])} {character['path']}\n"
+        f"{get_element_emoji(character['element'])} {character['element']}\n"
+        f"⏳ **Duración:** {duration_clean}"
+    )
     
     await thread_obj.send(info_text)
     
-    logger.info(f"✅ Publicación creada para personaje: {character['name']}")
+    logger.info(f"✅ Publicación creada para personaje 5★: {character['name']}")
     
     return thread_obj
 
 async def update_forum_posts():
-    """Actualiza las publicaciones del foro por personaje"""
+    """Actualiza las publicaciones del foro por personaje (solo 5★)"""
     
     all_banners = scraper.get_banners()
     
@@ -1192,7 +1015,7 @@ async def update_forum_posts():
         await update_character_posts(TARGET_FORUM_PROXIMO, all_banners, now, "proximo")
 
 async def update_character_posts(channel_id, banners, now, status):
-    """Actualiza las publicaciones de personajes en un canal específico"""
+    """Actualiza las publicaciones de personajes 5★ en un canal específico"""
     
     channel = bot.get_channel(channel_id)
     if not channel:
@@ -1204,7 +1027,7 @@ async def update_character_posts(channel_id, banners, now, status):
         return
     
     try:
-        # Recopilar todos los personajes de los banners con su información
+        # Recopilar todos los personajes 5★ de los banners con su información
         characters_with_banner = []
         
         for banner in banners:
@@ -1227,21 +1050,14 @@ async def update_character_posts(channel_id, banners, now, status):
                 'duration_text': banner.duration_text
             }
             
-            # Añadir personajes 5★
+            # Añadir solo personajes 5★
             for char in banner.featured_5star_char:
                 characters_with_banner.append({
                     'character': char,
                     'banner_info': banner_info
                 })
-            
-            # Añadir personajes 4★
-            for char in banner.featured_4star_char:
-                characters_with_banner.append({
-                    'character': char,
-                    'banner_info': banner_info
-                })
         
-        logger.info(f"Foro {channel.name}: {len(characters_with_banner)} personajes encontrados")
+        logger.info(f"Foro {channel.name}: {len(characters_with_banner)} personajes 5★ encontrados")
         
         # Obtener hilos activos
         active_threads = []
@@ -1254,32 +1070,31 @@ async def update_character_posts(channel_id, banners, now, status):
         for thread in active_threads:
             for item in characters_with_banner:
                 if item['character']['name'] in thread.name:
-                    # Crear ID único para el personaje
                     char_id = re.sub(r'[^a-zA-Z0-9]', '', item['character']['name'].lower())
                     existing_posts[char_id] = thread
                     break
         
-        # Crear o actualizar publicaciones
+        # Crear nuevas publicaciones para personajes que no existen
         for item in characters_with_banner:
             char = item['character']
             
             char_id = re.sub(r'[^a-zA-Z0-9]', '', char['name'].lower())
             
             if char_id in existing_posts:
-                # El hilo ya existe, no necesitamos actualizarlo
                 logger.info(f"⏩ Hilo ya existe para: {char['name']}")
             else:
                 # Crear nueva publicación
                 try:
                     thread = await create_character_post(channel, char, item['banner_info'], status)
-                    forum_manager.set_post_id(channel_id, char_id, thread.id)
-                    logger.info(f"✅ Publicación creada: {char['name']}")
+                    if thread:  # Solo si se creó (siempre será 5★)
+                        forum_manager.set_post_id(channel_id, char_id, thread.id)
+                        logger.info(f"✅ Publicación creada: {char['name']}")
                 except Exception as e:
                     logger.error(f"Error creando publicación {char['name']}: {e}")
             
             await asyncio.sleep(1)
         
-        logger.info(f"✅ Foro {channel.name} actualizado")
+        logger.info(f"✅ Foro {channel.name} actualizado con {len(characters_with_banner)} personajes 5★")
         
     except Exception as e:
         logger.error(f"❌ Error actualizando foro {channel.name}: {e}")
@@ -1288,7 +1103,7 @@ async def update_character_posts(channel_id, banners, now, status):
 # VARIABLES DE ENTORNO
 # ============================================
 logger.info("=" * 60)
-logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - FORO POR PERSONAJE")
+logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - SOLO 5★ CON DURACIÓN")
 logger.info("=" * 60)
 
 TOKEN = os.environ.get('DISCORD_TOKEN')
@@ -1329,7 +1144,7 @@ async def on_ready():
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
-            name="🔮 Personajes en banner | !personajes"
+            name="🔮 Personajes 5★ | !personajes"
         )
     )
     
@@ -1345,11 +1160,11 @@ async def daily_forum_posts():
 async def before_daily_forum_posts():
     await bot.wait_until_ready()
 
-@bot.command(name='personajes', aliases=['banners', 'warps'])
+@bot.command(name='personajes', aliases=['banners', 'warps', '5★'])
 async def personajes_command(ctx):
-    """Muestra los personajes en banner actualmente"""
+    """Muestra los personajes 5★ en banner actualmente"""
     
-    loading_msg = await ctx.send("🔮 **Escaneando personajes en banner...**")
+    loading_msg = await ctx.send("🔮 **Escaneando personajes 5★ en banner...**")
     
     try:
         all_banners = scraper.get_banners()
@@ -1374,27 +1189,27 @@ async def personajes_command(ctx):
             
             target_list = personajes_actuales if is_current else personajes_proximos
             
-            for char in banner.featured_5star_char + banner.featured_4star_char:
+            # Solo personajes 5★
+            for char in banner.featured_5star_char:
                 target_list.append({
                     'name': char['name'],
-                    'time': banner.time_remaining,
-                    'type': '★5' if char['rarity'] == 5 else '★4'
+                    'time': banner.time_remaining
                 })
         
         await loading_msg.delete()
         
-        response = "## 📊 **Personajes en Banner**\n\n"
+        response = "## 📊 **Personajes 5★ en Banner**\n\n"
         
         if personajes_actuales:
             response += "### 🔴 **ACTUALES**\n"
             for p in personajes_actuales:
-                response += f"{p['type']} **{p['name']}** - {p['time']}\n"
+                response += f"✨ **{p['name']}** - {p['time']}\n"
             response += "\n"
         
         if personajes_proximos:
             response += "### 🟡 **PRÓXIMOS**\n"
             for p in personajes_proximos:
-                response += f"{p['type']} **{p['name']}** - {p['time']}\n"
+                response += f"✨ **{p['name']}** - {p['time']}\n"
         
         if len(response) > 2000:
             parts = [response[i:i+1900] for i in range(0, len(response), 1900)]
@@ -1455,7 +1270,7 @@ async def banner_stats(ctx):
     now = datetime.now()
     banners_actuales = 0
     banners_proximos = 0
-    total_personajes = 0
+    total_personajes_5star = 0
     
     for banner in banners:
         if banner.end_date and banner.end_date > now:
@@ -1466,24 +1281,24 @@ async def banner_stats(ctx):
             else:
                 banners_actuales += 1
         
-        total_personajes += len(banner.featured_5star_char) + len(banner.featured_4star_char)
+        total_personajes_5star += len(banner.featured_5star_char)
     
     embed = discord.Embed(
         title="📊 **Estadísticas**",
-        description="Resumen de personajes en banner",
+        description="Resumen de personajes 5★ en banner",
         color=discord.Color.blue()
     )
     
     embed.add_field(name="🔴 Banners actuales", value=str(banners_actuales), inline=True)
     embed.add_field(name="🟡 Banners próximos", value=str(banners_proximos), inline=True)
-    embed.add_field(name="👥 Personajes totales", value=str(total_personajes), inline=True)
+    embed.add_field(name="✨ Personajes 5★", value=str(total_personajes_5star), inline=True)
     
     await ctx.send(embed=embed)
 
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
-        await ctx.send("❌ **Comando no encontrado.** Usa `!personajes` para ver los personajes en banner.")
+        await ctx.send("❌ **Comando no encontrado.** Usa `!personajes` para ver los personajes 5★ en banner.")
     elif isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ **No tienes permiso para usar este comando.**")
     elif isinstance(error, discord.Forbidden):
