@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # Configuración del bot
 intents = discord.Intents.default()
 intents.message_content = True
+intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 # ============================================
@@ -33,7 +34,7 @@ class Banner:
                  featured_5star_char: list, featured_4star_char: list, 
                  featured_5star_cone: list, featured_4star_cone: list,
                  duration_text: str = "", start_date=None, end_date=None,
-                 banner_id: str = ""):
+                 banner_id: str = "", characters_data: list = None, cones_data: list = None):
         self.name = name
         self.banner_type = banner_type
         self.time_remaining = time_remaining
@@ -45,52 +46,65 @@ class Banner:
         self.start_date = start_date
         self.end_date = end_date
         self.banner_id = banner_id
+        self.characters_data = characters_data if characters_data else []
+        self.cones_data = cones_data if cones_data else []
 
 # ============================================
-# CLASE PARA GESTIONAR MENSAJES
+# CLASE PARA GESTIONAR HILOS
 # ============================================
-class MessageManager:
-    """Gestiona los mensajes del bot para editarlos en lugar de crear nuevos"""
+class ThreadManager:
+    """Gestiona los hilos (threads) del bot"""
     
     def __init__(self):
-        self.message_file = "banner_messages.json"
-        self.messages = self.load_messages()
+        self.thread_file = "banner_threads.json"
+        self.threads = self.load_threads()
     
-    def load_messages(self):
-        """Carga los mensajes guardados"""
+    def load_threads(self):
+        """Carga los hilos guardados"""
         try:
-            if os.path.exists(self.message_file):
-                with open(self.message_file, 'r', encoding='utf-8') as f:
+            if os.path.exists(self.thread_file):
+                with open(self.thread_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
         except Exception as e:
-            logger.error(f"Error cargando mensajes: {e}")
+            logger.error(f"Error cargando hilos: {e}")
         return {}
     
-    def save_messages(self):
-        """Guarda los mensajes"""
+    def save_threads(self):
+        """Guarda los hilos"""
         try:
-            with open(self.message_file, 'w', encoding='utf-8') as f:
-                json.dump(self.messages, f, indent=2, ensure_ascii=False)
+            with open(self.thread_file, 'w', encoding='utf-8') as f:
+                json.dump(self.threads, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            logger.error(f"Error guardando mensajes: {e}")
+            logger.error(f"Error guardando hilos: {e}")
     
-    def get_message_id(self, channel_id, banner_name):
-        """Obtiene el ID del mensaje para un banner específico"""
-        key = f"{channel_id}_{banner_name}"
-        return self.messages.get(key)
+    def get_thread_id(self, channel_id, banner_id):
+        """Obtiene el ID del hilo para un banner específico"""
+        key = f"{channel_id}_{banner_id}"
+        return self.threads.get(key)
     
-    def set_message_id(self, channel_id, banner_name, message_id):
-        """Guarda el ID del mensaje para un banner específico"""
-        key = f"{channel_id}_{banner_name}"
-        self.messages[key] = message_id
-        self.save_messages()
+    def set_thread_id(self, channel_id, banner_id, thread_id, message_id):
+        """Guarda el ID del hilo para un banner específico"""
+        key = f"{channel_id}_{banner_id}"
+        self.threads[key] = {
+            "thread_id": thread_id,
+            "message_id": message_id,
+            "last_updated": datetime.now().isoformat()
+        }
+        self.save_threads()
+    
+    def remove_thread(self, channel_id, banner_id):
+        """Elimina un hilo del registro"""
+        key = f"{channel_id}_{banner_id}"
+        if key in self.threads:
+            del self.threads[key]
+            self.save_threads()
     
     def clear_channel(self, channel_id):
-        """Limpia todos los mensajes de un canal"""
-        keys_to_delete = [k for k in self.messages.keys() if k.startswith(f"{channel_id}_")]
+        """Limpia todos los hilos de un canal"""
+        keys_to_delete = [k for k in self.threads.keys() if k.startswith(f"{channel_id}_")]
         for key in keys_to_delete:
-            del self.messages[key]
-        self.save_messages()
+            del self.threads[key]
+        self.save_threads()
 
 # ============================================
 # CLASE BANNER SCRAPER
@@ -169,10 +183,6 @@ class BannerScraper:
         if not duration_text:
             return None, None
         
-        # Buscar patrones de fecha comunes
-        # Formato: "2026/01/25 04:00 - 2026/02/16 03:59"
-        # o "After 4.0 patch goes live — 2026/03/03 15:00"
-        
         start_date = None
         end_date = None
         
@@ -181,17 +191,14 @@ class BannerScraper:
         dates = re.findall(date_pattern, duration_text)
         
         if len(dates) >= 2:
-            # Tiene fecha de inicio y fin
             try:
                 start_date = parser.parse(dates[0], fuzzy=True)
                 end_date = parser.parse(dates[1], fuzzy=True)
             except:
                 pass
         elif len(dates) == 1:
-            # Puede ser solo fecha de fin (banner que ya empezó)
             try:
                 end_date = parser.parse(dates[0], fuzzy=True)
-                # Asumimos que empezó hace algún tiempo
                 start_date = datetime.now() - relativedelta(days=20)
             except:
                 pass
@@ -202,12 +209,6 @@ class BannerScraper:
         """Determina si un accordion-item es un WARP real basado en su estructura interna"""
         html = str(item)
         
-        # Características que definen un WARP:
-        # 1. Tiene párrafos con clase 'featured'
-        # 2. Tiene spans con clase 'hsr-rar' que contienen '5★' o '4★'
-        # 3. Tiene secciones 'featured-characters' o 'featured-cone'
-        # 4. Tiene avatar-cards o hsr-set-image (contenido real)
-        
         has_featured_p = 'class="featured"' in html
         has_rarity_spans = 'hsr-rar' in html and ('5★' in html or '4★' in html)
         has_featured_chars = 'featured-characters' in html
@@ -215,14 +216,10 @@ class BannerScraper:
         has_avatar_cards = 'avatar-card' in html
         has_cone_images = 'hsr-set-image' in html
         
-        # También debe tener elementos básicos
         has_event_name = 'event-name' in html
         has_duration = 'Event Duration' in html
         
-        # Un warp SIEMPRE tiene rarezas Y contenido destacado
         is_warp = (has_featured_p or has_rarity_spans) and (has_featured_chars or has_featured_cones or has_avatar_cards or has_cone_images)
-        
-        # Los eventos de juego NO tienen featured
         is_game_event = 'Memory Turbulence' in html or 'Description:' in html
         
         return is_warp and not is_game_event and has_event_name and has_duration
@@ -239,11 +236,9 @@ class BannerScraper:
                 char_key = href.split('/')[-1]
                 name = char_key.replace('-', ' ').title()
             
-            # Imagen - prioridad a la extraída del HTML
             img_tag = card.find('img')
             image_url = self.extract_image_url(img_tag)
             
-            # Elemento
             element = "Unknown"
             element_tag = card.find('span', class_='floating-element')
             if element_tag:
@@ -251,11 +246,9 @@ class BannerScraper:
                 if element_img and element_img.get('alt'):
                     element = element_img.get('alt')
             
-            # Rareza
             card_html = str(card)
             rarity = 5 if 'rarity-5' in card_html or 'rar-5' in card_html else 4
             
-            # Si no hay imagen, usar imagen por defecto
             if not image_url:
                 image_url = self.default_image
             
@@ -286,7 +279,6 @@ class BannerScraper:
             cone_html = str(cone_item)
             rarity = 5 if 'rarity-5' in cone_html or 'rar-5' in cone_html else 4
             
-            # Si no hay imagen, usar imagen por defecto
             if not image_url:
                 image_url = self.default_image
             
@@ -306,10 +298,10 @@ class BannerScraper:
         """Extrae personajes 5★ y 4★ de un banner"""
         featured_5star_char = []
         featured_4star_char = []
+        all_characters = []
         
         char_sections = item.find_all('div', class_='featured-characters')
         for section in char_sections:
-            # Verificar si es 5★ o 4★ por el texto anterior
             prev_p = section.find_previous('p', class_='featured')
             is_five_star = prev_p and '5★' in prev_p.text if prev_p else False
             
@@ -317,21 +309,22 @@ class BannerScraper:
             for card in cards:
                 char_data = self.parse_character(card)
                 if char_data:
+                    all_characters.append(char_data)
                     if is_five_star or char_data['rarity'] == 5:
                         featured_5star_char.append(char_data)
                     else:
                         featured_4star_char.append(char_data)
         
-        return featured_5star_char, featured_4star_char
+        return featured_5star_char, featured_4star_char, all_characters
     
     def extract_light_cones(self, item):
         """Extrae conos 5★ y 4★ de un banner"""
         featured_5star_cone = []
         featured_4star_cone = []
+        all_cones = []
         
         cone_sections = item.find_all('div', class_='featured-cone')
         for section in cone_sections:
-            # Verificar si es 5★ o 4★
             prev_p = section.find_previous('p', class_='featured')
             is_five_star = prev_p and '5★' in prev_p.text if prev_p else False
             
@@ -339,12 +332,13 @@ class BannerScraper:
             for cone in cone_items:
                 cone_data = self.parse_light_cone(cone)
                 if cone_data:
+                    all_cones.append(cone_data)
                     if is_five_star or cone_data['rarity'] == 5:
                         featured_5star_cone.append(cone_data)
                     else:
                         featured_4star_cone.append(cone_data)
         
-        return featured_5star_cone, featured_4star_cone
+        return featured_5star_cone, featured_4star_cone, all_cones
     
     def classify_banner_type(self, item, chars5, chars4, cones5, cones4) -> str:
         """Clasifica el tipo de banner basado en lo que contiene"""
@@ -369,7 +363,6 @@ class BannerScraper:
             
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Buscar TODOS los accordion-item
             all_items = soup.find_all('div', class_='accordion-item')
             logger.info(f"Total accordion-items encontrados: {len(all_items)}")
             
@@ -378,35 +371,27 @@ class BannerScraper:
             skipped_count = 0
             
             for item in all_items:
-                # Verificar si es un WARP por su estructura interna
                 if not self.is_warp_banner(item):
                     skipped_count += 1
                     continue
                 
                 try:
-                    # Nombre del banner (usado como ID único)
                     name_tag = item.find('div', class_='event-name')
                     banner_name = name_tag.text.strip() if name_tag else "Banner sin nombre"
                     
-                    # Crear un ID único para el banner (nombre normalizado)
                     banner_id = re.sub(r'[^a-zA-Z0-9]', '', banner_name.lower())
                     
-                    # Tiempo restante
                     time_tag = item.find('span', class_='time')
                     time_remaining = time_tag.text.strip() if time_tag else "Tiempo desconocido"
                     
-                    # Duración
                     duration_tag = item.find('p', class_='duration')
                     duration_text = duration_tag.text.strip() if duration_tag else ""
                     
-                    # Extraer fechas
                     start_date, end_date = self.parse_date_from_duration(duration_text)
                     
-                    # Extraer personajes y conos
-                    featured_5star_char, featured_4star_char = self.extract_characters(item)
-                    featured_5star_cone, featured_4star_cone = self.extract_light_cones(item)
+                    featured_5star_char, featured_4star_char, all_characters = self.extract_characters(item)
+                    featured_5star_cone, featured_4star_cone, all_cones = self.extract_light_cones(item)
                     
-                    # Determinar tipo
                     banner_type = self.classify_banner_type(item, featured_5star_char, featured_4star_char, 
                                                             featured_5star_cone, featured_4star_cone)
                     
@@ -423,20 +408,17 @@ class BannerScraper:
                         duration_text=duration_text,
                         start_date=start_date,
                         end_date=end_date,
-                        banner_id=banner_id
+                        banner_id=banner_id,
+                        characters_data=all_characters,
+                        cones_data=all_cones
                     )
                     banners.append(banner)
                     
-                    # Log detallado
                     logger.info(f"✅ Warp {warp_count}: {banner_name}")
                     logger.info(f"   - ID: {banner_id}")
                     logger.info(f"   - Tipo: {banner_type}")
-                    logger.info(f"   - Inicio: {start_date}")
-                    logger.info(f"   - Fin: {end_date}")
-                    logger.info(f"   - Personajes 5★: {len(featured_5star_char)}")
-                    logger.info(f"   - Personajes 4★: {len(featured_4star_char)}")
-                    logger.info(f"   - Conos 5★: {len(featured_5star_cone)}")
-                    logger.info(f"   - Conos 4★: {len(featured_4star_cone)}")
+                    logger.info(f"   - Personajes: {len(all_characters)}")
+                    logger.info(f"   - Conos: {len(all_cones)}")
                     
                 except Exception as e:
                     logger.error(f"Error procesando banner: {e}")
@@ -454,7 +436,7 @@ class BannerScraper:
 # INSTANCIAS GLOBALES
 # ============================================
 scraper = BannerScraper()
-message_manager = MessageManager()
+thread_manager = ThreadManager()
 
 # ============================================
 # FUNCIONES AUXILIARES
@@ -470,142 +452,110 @@ def get_element_emoji(element: str) -> str:
     }
     return elements.get(element, elements.get(element.lower(), '🔮'))
 
-def create_banner_embed(banner: Banner, status: str = "actual") -> discord.Embed:
-    """Crea un embed precioso para un banner con TODAS las imágenes posibles"""
+async def create_banner_thread(channel, banner, status):
+    """Crea un hilo (thread) para un banner con todas sus imágenes"""
     
-    # Emoji según el tipo y estado
+    # Emoji según el tipo
     type_emoji = {
         "Personaje": "🦸",
         "Cono de Luz": "⚔️",
         "Mixto (Doble)": "🎁"
     }.get(banner.banner_type, "🎯")
     
-    # Color según el tipo y estado
-    if status == "proximo":
-        color = discord.Color.from_rgb(100, 100, 100)  # Gris para próximos
-    elif banner.banner_type == "Personaje":
-        color = discord.Color.from_rgb(255, 215, 0)  # Dorado
-    elif banner.banner_type == "Cono de Luz":
-        color = discord.Color.from_rgb(147, 112, 219)  # Púrpura
-    else:
-        color = discord.Color.from_rgb(52, 152, 219)  # Azul
-    
-    # Título con emoji y estado
     status_emoji = "🔴" if status == "actual" else "🟡"
-    title = f"{status_emoji} {type_emoji} {banner.name}"
     
-    embed = discord.Embed(
-        title=title,
-        description=f"**Tipo:** {banner.banner_type}\n**⏳ Tiempo restante:** {banner.time_remaining}",
-        color=color,
-        timestamp=datetime.now()
+    # Crear el mensaje inicial del hilo
+    thread_name = f"{status_emoji} {type_emoji} {banner.name[:90]}"  # Máximo 100 chars
+    
+    # Mensaje principal con información del banner
+    content = f"""# {status_emoji} **{banner.name}**
+
+**Tipo:** {banner.banner_type}
+**⏳ Tiempo restante:** {banner.time_remaining}
+
+📅 **Duración:** {banner.duration_text.replace('Event Duration', '')}
+
+"""
+    
+    # Añadir personajes destacados
+    if banner.featured_5star_char or banner.featured_4star_char:
+        content += "\n## ✨ Personajes Destacados\n"
+        
+        if banner.featured_5star_char:
+            content += "\n**★5**\n"
+            for char in banner.featured_5star_char:
+                element_emoji = get_element_emoji(char.get('element', 'Unknown'))
+                content += f"{element_emoji} **{char['name']}**\n"
+        
+        if banner.featured_4star_char:
+            content += "\n**★4**\n"
+            for char in banner.featured_4star_char:
+                element_emoji = get_element_emoji(char.get('element', 'Unknown'))
+                content += f"{element_emoji} **{char['name']}**\n"
+    
+    # Añadir conos de luz destacados
+    if banner.featured_5star_cone or banner.featured_4star_cone:
+        content += "\n## 💫 Conos de Luz Destacados\n"
+        
+        if banner.featured_5star_cone:
+            content += "\n**★5**\n"
+            for cone in banner.featured_5star_cone:
+                content += f"💫 **{cone['name']}**\n"
+        
+        if banner.featured_4star_cone:
+            content += "\n**★4**\n"
+            for cone in banner.featured_4star_cone:
+                content += f"📿 **{cone['name']}**\n"
+    
+    # Enviar mensaje principal
+    main_msg = await channel.send(content)
+    
+    # Crear el hilo
+    thread = await main_msg.create_thread(
+        name=thread_name,
+        auto_archive_duration=10080  # 7 días
     )
     
-    # Duración del evento (formateada bonito)
-    if banner.duration_text:
-        clean_duration = banner.duration_text.replace('Event Duration', '📅 **Duración**')
-        clean_duration = clean_duration.replace('server time', 'hora del servidor')
-        if len(clean_duration) > 1024:
-            clean_duration = clean_duration[:1021] + "..."
-        embed.add_field(name="📅 Duración", value=clean_duration, inline=False)
-    
-    # Fechas si están disponibles
-    if banner.start_date and banner.end_date:
-        fecha_text = f"Inicio: {banner.start_date.strftime('%d/%m/%Y %H:%M')}\nFin: {banner.end_date.strftime('%d/%m/%Y %H:%M')}"
-        embed.add_field(name="📆 Fechas", value=fecha_text, inline=False)
-    
-    # Personajes 5★ (con emojis de elemento)
-    if banner.featured_5star_char:
-        chars_text = ""
-        for char in banner.featured_5star_char:
-            element_emoji = get_element_emoji(char.get('element', 'Unknown'))
-            chars_text += f"{element_emoji} **{char['name']}**\n"
-        
-        if chars_text:
-            embed.add_field(name="✨ **Personajes 5★**", value=chars_text, inline=True)
-    
-    # Personajes 4★
-    if banner.featured_4star_char:
-        chars_text = ""
-        for char in banner.featured_4star_char:
-            element_emoji = get_element_emoji(char.get('element', 'Unknown'))
-            chars_text += f"{element_emoji} **{char['name']}**\n"
-        
-        if chars_text:
-            embed.add_field(name="⭐ **Personajes 4★**", value=chars_text, inline=True)
-    
-    # Conos de luz 5★
-    if banner.featured_5star_cone:
-        cones_text = ""
-        for cone in banner.featured_5star_cone:
-            cones_text += f"💫 **{cone['name']}** (★5)\n"
-        
-        if cones_text:
-            embed.add_field(name="💫 **Conos de Luz 5★**", value=cones_text, inline=False)
-    
-    # Conos de luz 4★
-    if banner.featured_4star_cone:
-        cones_text = ""
-        for cone in banner.featured_4star_cone:
-            cones_text += f"📿 **{cone['name']}** (★4)\n"
-        
-        if cones_text:
-            embed.add_field(name="📿 **Conos de Luz 4★**", value=cones_text, inline=False)
-    
-    # IMÁGENES - Añadir todas las imágenes disponibles
-    image_urls = []
+    # Enviar todas las imágenes como mensajes en el hilo
+    all_images = []
     
     # Recopilar todas las URLs de imágenes
-    for char in banner.featured_5star_char:
-        if char.get('image') and char['image'] not in image_urls:
-            image_urls.append(char['image'])
+    for char in banner.characters_data:
+        if char.get('image') and char['image'] not in all_images:
+            all_images.append(char['image'])
     
-    for char in banner.featured_4star_char:
-        if char.get('image') and char['image'] not in image_urls:
-            image_urls.append(char['image'])
+    for cone in banner.cones_data:
+        if cone.get('image') and cone['image'] not in all_images:
+            all_images.append(cone['image'])
     
-    for cone in banner.featured_5star_cone:
-        if cone.get('image') and cone['image'] not in image_urls:
-            image_urls.append(cone['image'])
-    
-    for cone in banner.featured_4star_cone:
-        if cone.get('image') and cone['image'] not in image_urls:
-            image_urls.append(cone['image'])
-    
-    # Si hay imágenes, mostrar la primera como thumbnail y las siguientes como imágenes
-    if image_urls:
-        # Primera imagen como thumbnail
-        try:
-            embed.set_thumbnail(url=image_urls[0])
-        except Exception as e:
-            logger.error(f"Error estableciendo thumbnail: {e}")
+    # Enviar imágenes en lotes
+    if all_images:
+        await thread.send("## 🖼️ **Galería de Imágenes**")
         
-        # Si hay más imágenes, añadirlas como fields
-        if len(image_urls) > 1:
-            for i, img_url in enumerate(image_urls[1:4]):  # Máximo 3 imágenes adicionales
-                try:
-                    embed.add_field(name="🖼️" if i == 0 else "​", value=f"[Ver imagen]({img_url})", inline=True)
-                except:
-                    pass
+        # Enviar imágenes en grupos de 5 para no saturar
+        for i in range(0, len(all_images), 5):
+            batch = all_images[i:i+5]
+            img_content = ""
+            for idx, img_url in enumerate(batch):
+                img_content += f"[Imagen {i+idx+1}]({img_url})\n"
+            
+            if img_content:
+                await thread.send(img_content)
+            await asyncio.sleep(1)
     
-    # Si no hay imágenes, usar imagen por defecto
-    if not image_urls:
-        embed.set_thumbnail(url="https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png")
-    
-    # Footer con estadísticas
+    # Estadísticas finales
     total_5star = len(banner.featured_5star_char) + len(banner.featured_5star_cone)
     total_4star = len(banner.featured_4star_char) + len(banner.featured_4star_cone)
     
-    footer_text = f"✨ {total_5star} ★5  |  ⭐ {total_4star} ★4  •  {status.capitalize()} • Datos de Prydwen.gg"
-    embed.set_footer(text=footer_text)
+    await thread.send(f"✨ **{total_5star} ★5**  |  ⭐ **{total_4star} ★4**")
     
-    return embed
+    return thread, main_msg
 
 # ============================================
 # VARIABLES DE ENTORNO
 # ============================================
 logger.info("=" * 60)
-logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - EDITOR DE MENSAJES")
+logger.info("🚀 INICIANDO BOT DE HONKAI STAR RAIL - HILOS POR BANNER")
 logger.info("=" * 60)
 
 TOKEN = os.environ.get('DISCORD_TOKEN')
@@ -636,9 +586,6 @@ if not TOKEN:
     logger.error("❌ ERROR CRÍTICO: No hay token de Discord")
     sys.exit(1)
 
-if not TARGET_CHANNEL_ACTUAL and not TARGET_CHANNEL_PROXIMO:
-    logger.warning("⚠️ No hay canales configurados. Los banners solo se podrán ver con comandos.")
-
 # ============================================
 # EVENTOS Y COMANDOS DEL BOT
 # ============================================
@@ -646,7 +593,6 @@ if not TARGET_CHANNEL_ACTUAL and not TARGET_CHANNEL_PROXIMO:
 async def on_ready():
     logger.info(f'✅ {bot.user} ha conectado a Discord!')
     
-    # Estado personalizado
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
@@ -654,32 +600,28 @@ async def on_ready():
         )
     )
     
-    # Iniciar tarea diaria si hay al menos un canal configurado
     if TARGET_CHANNEL_ACTUAL or TARGET_CHANNEL_PROXIMO:
         daily_banners.start()
         logger.info(f"📅 Tarea diaria iniciada")
 
 @tasks.loop(hours=24)
 async def daily_banners():
-    """Actualiza los banners cada 24 horas (editando mensajes existentes)"""
-    await update_banners()
+    """Actualiza los banners cada 24 horas (creando/actualizando hilos)"""
+    await update_banner_threads()
 
 @daily_banners.before_loop
 async def before_daily_banners():
-    """Espera a que el bot esté listo"""
     await bot.wait_until_ready()
 
-async def update_banners():
-    """Actualiza los banners en los canales (editando en lugar de crear nuevos)"""
+async def update_banner_threads():
+    """Actualiza los hilos de banners"""
     
-    # Obtener todos los banners
     all_banners = scraper.get_banners()
     
     if not all_banners:
         logger.warning("No se encontraron banners para actualizar")
         return
     
-    # Clasificar banners por fecha
     now = datetime.now()
     banners_actuales = []
     banners_proximos = []
@@ -691,21 +633,18 @@ async def update_banners():
             elif banner.start_date and banner.start_date > now:
                 banners_proximos.append(banner)
             else:
-                # Si no tenemos fecha de inicio, asumimos que es actual
                 banners_actuales.append(banner)
     
     logger.info(f"Clasificación: {len(banners_actuales)} actuales, {len(banners_proximos)} próximos")
     
-    # Actualizar canal de actuales
     if TARGET_CHANNEL_ACTUAL:
-        await update_channel_banners(TARGET_CHANNEL_ACTUAL, banners_actuales, "actual")
+        await update_channel_threads(TARGET_CHANNEL_ACTUAL, banners_actuales, "actual")
     
-    # Actualizar canal de próximos
     if TARGET_CHANNEL_PROXIMO:
-        await update_channel_banners(TARGET_CHANNEL_PROXIMO, banners_proximos, "proximo")
+        await update_channel_threads(TARGET_CHANNEL_PROXIMO, banners_proximos, "proximo")
 
-async def update_channel_banners(channel_id, banners, status):
-    """Actualiza los banners de un canal específico (editando mensajes)"""
+async def update_channel_threads(channel_id, banners, status):
+    """Actualiza los hilos de un canal específico"""
     
     channel = bot.get_channel(channel_id)
     if not channel:
@@ -713,68 +652,73 @@ async def update_channel_banners(channel_id, banners, status):
         return
     
     try:
-        # Enviar mensaje de carga
-        loading_msg = await channel.send(f"🔄 **Actualizando warps {status}es...**")
+        # Obtener hilos activos en el canal
+        active_threads = []
+        async for thread in channel.threads:
+            active_threads.append(thread)
         
-        # Obtener mensajes existentes en el canal
-        existing_messages = []
-        async for message in channel.history(limit=50):
-            if message.author == bot.user and message.embeds:
-                existing_messages.append(message)
+        logger.info(f"Canal {channel.name}: {len(active_threads)} hilos activos")
         
-        logger.info(f"Canal {channel.name}: {len(existing_messages)} mensajes existentes")
-        
-        # Mapear mensajes existentes por ID de banner
-        existing_by_id = {}
-        for msg in existing_messages:
-            if msg.embeds and msg.embeds[0].title:
-                # Intentar extraer ID del banner del título o footer
-                for banner in banners:
-                    if banner.name in msg.embeds[0].title:
-                        existing_by_id[banner.banner_id] = msg
-                        break
-        
-        # Actualizar o crear mensajes para cada banner
-        for banner in banners:
-            embed = create_banner_embed(banner, status)
-            
-            if banner.banner_id in existing_by_id:
-                # Editar mensaje existente
-                msg = existing_by_id[banner.banner_id]
-                try:
-                    await msg.edit(embed=embed)
-                    logger.info(f"✅ Mensaje editado: {banner.name}")
-                except Exception as e:
-                    logger.error(f"Error editando mensaje {banner.name}: {e}")
-            else:
-                # Crear nuevo mensaje
-                try:
-                    new_msg = await channel.send(embed=embed)
-                    message_manager.set_message_id(channel_id, banner.banner_id, new_msg.id)
-                    logger.info(f"✅ Mensaje creado: {banner.name}")
-                except Exception as e:
-                    logger.error(f"Error creando mensaje {banner.name}: {e}")
-            
-            await asyncio.sleep(1)  # Pausa para evitar rate limits
-        
-        # Eliminar mensajes de banners que ya no existen
-        current_ids = {b.banner_id for b in banners}
-        for msg in existing_messages:
-            msg_id = None
-            for banner_id, existing_msg in existing_by_id.items():
-                if existing_msg.id == msg.id and banner_id not in current_ids:
-                    try:
-                        await msg.delete()
-                        logger.info(f"🗑️ Mensaje eliminado (banner ya no existe)")
-                    except Exception as e:
-                        logger.error(f"Error eliminando mensaje: {e}")
+        # Mapear hilos existentes por ID de banner
+        existing_threads = {}
+        for thread in active_threads:
+            for banner in banners:
+                if banner.name in thread.name:
+                    existing_threads[banner.banner_id] = thread
                     break
         
-        # Limpiar mensaje de carga
-        await loading_msg.delete()
+        # Crear o actualizar hilos
+        for banner in banners:
+            if banner.banner_id in existing_threads:
+                # Actualizar hilo existente - cambiar nombre si es necesario
+                thread = existing_threads[banner.banner_id]
+                status_emoji = "🔴" if status == "actual" else "🟡"
+                type_emoji = {
+                    "Personaje": "🦸",
+                    "Cono de Luz": "⚔️",
+                    "Mixto (Doble)": "🎁"
+                }.get(banner.banner_type, "🎯")
+                
+                new_name = f"{status_emoji} {type_emoji} {banner.name[:90]}"
+                
+                if thread.name != new_name:
+                    try:
+                        await thread.edit(name=new_name)
+                        logger.info(f"✅ Hilo renombrado: {banner.name}")
+                    except Exception as e:
+                        logger.error(f"Error renombrando hilo {banner.name}: {e}")
+                
+                # Enviar mensaje de actualización al hilo
+                try:
+                    await thread.send(f"🔄 **Actualización {datetime.now().strftime('%d/%m/%Y %H:%M')}**\nTiempo restante: {banner.time_remaining}")
+                except:
+                    pass
+            else:
+                # Crear nuevo hilo
+                try:
+                    thread, main_msg = await create_banner_thread(channel, banner, status)
+                    thread_manager.set_thread_id(channel_id, banner.banner_id, thread.id, main_msg.id)
+                    logger.info(f"✅ Hilo creado: {banner.name}")
+                except Exception as e:
+                    logger.error(f"Error creando hilo {banner.name}: {e}")
+            
+            await asyncio.sleep(1)
         
-        # Mensaje de resumen
-        await channel.send(f"✅ **{len(banners)} warps {status}es actualizados.**")
+        # Archivar hilos de banners que ya no existen
+        current_ids = {b.banner_id for b in banners}
+        for thread in active_threads:
+            thread_id = None
+            for banner_id, existing_thread in existing_threads.items():
+                if existing_thread.id == thread.id and banner_id not in current_ids:
+                    try:
+                        await thread.edit(archived=True)
+                        logger.info(f"📦 Hilo archivado (banner ya no existe)")
+                        thread_manager.remove_thread(channel_id, banner_id)
+                    except Exception as e:
+                        logger.error(f"Error archivando hilo: {e}")
+                    break
+        
+        logger.info(f"✅ Canal {channel.name} actualizado con {len(banners)} hilos")
         
     except Exception as e:
         logger.error(f"❌ Error actualizando canal {channel.name}: {e}")
@@ -792,7 +736,6 @@ async def banners_command(ctx):
             await loading_msg.edit(content="❌ **No se encontraron warps.**")
             return
         
-        # Clasificar
         now = datetime.now()
         banners_actuales = []
         banners_proximos = []
@@ -808,81 +751,48 @@ async def banners_command(ctx):
         
         await loading_msg.delete()
         
-        # Enviar actuales
+        response = "## 📊 **Warps de Honkai: Star Rail**\n\n"
+        
         if banners_actuales:
-            await ctx.send("🔴 **WARPS ACTIVOS ACTUALMENTE**")
+            response += "### 🔴 **ACTUALES**\n"
             for banner in banners_actuales:
-                embed = create_banner_embed(banner, "actual")
-                await ctx.send(embed=embed)
-                await asyncio.sleep(1)
+                type_emoji = {
+                    "Personaje": "🦸",
+                    "Cono de Luz": "⚔️",
+                    "Mixto (Doble)": "🎁"
+                }.get(banner.banner_type, "🎯")
+                response += f"{type_emoji} **{banner.name}** - {banner.time_remaining}\n"
+            response += "\n"
         
-        # Enviar próximos
         if banners_proximos:
-            await ctx.send("🟡 **PRÓXIMOS WARPS**")
+            response += "### 🟡 **PRÓXIMOS**\n"
             for banner in banners_proximos:
-                embed = create_banner_embed(banner, "proximo")
-                await ctx.send(embed=embed)
-                await asyncio.sleep(1)
+                type_emoji = {
+                    "Personaje": "🦸",
+                    "Cono de Luz": "⚔️",
+                    "Mixto (Doble)": "🎁"
+                }.get(banner.banner_type, "🎯")
+                response += f"{type_emoji} **{banner.name}** - {banner.time_remaining}\n"
         
-        # Resumen
-        await ctx.send(f"📊 **Resumen:** {len(banners_actuales)} actuales, {len(banners_proximos)} próximos")
+        await ctx.send(response)
         
     except Exception as e:
         logger.error(f"Error en comando banners: {e}")
         await loading_msg.edit(content=f"❌ **Error:** {str(e)[:200]}")
 
-@bot.command(name='banner', aliases=['warpinfo'])
-async def banner_info(ctx, *, banner_name: str = None):
-    """Muestra información de un warp específico"""
-    if not banner_name:
-        await ctx.send("❌ **Usa:** `!banner nombre_del_warp`\nPor ejemplo: `!banner Deadly Dancer`")
-        return
-    
-    banners = scraper.get_banners()
-    
-    # Buscar por nombre
-    found_banners = [b for b in banners if banner_name.lower() in b.name.lower()]
-    
-    # Buscar por personaje
-    if not found_banners:
-        for b in banners:
-            for char in b.featured_5star_char + b.featured_4star_char:
-                if banner_name.lower() in char.get('name', '').lower():
-                    found_banners.append(b)
-                    break
-    
-    # Buscar por cono
-    if not found_banners:
-        for b in banners:
-            for cone in b.featured_5star_cone + b.featured_4star_cone:
-                if banner_name.lower() in cone.get('name', '').lower():
-                    found_banners.append(b)
-                    break
-    
-    if not found_banners:
-        await ctx.send(f"❌ **No se encontró '{banner_name}'**")
-        return
-    
-    for banner in found_banners[:2]:  # Máximo 2 banners
-        # Determinar si es actual o próximo
-        now = datetime.now()
-        status = "proximo" if (banner.start_date and banner.start_date > now) else "actual"
-        embed = create_banner_embed(banner, status)
-        await ctx.send(embed=embed)
-
-@bot.command(name='refresh')
+@bot.command(name='threads_refresh')
 @commands.has_permissions(administrator=True)
-async def refresh_banners(ctx):
-    """Fuerza actualización (solo admins)"""
-    await ctx.send("🔄 **Forzando actualización de warps...**")
-    await update_banners()
+async def threads_refresh(ctx):
+    """Fuerza actualización de hilos (solo admins)"""
+    await ctx.send("🔄 **Forzando actualización de hilos...**")
+    await update_banner_threads()
 
-@bot.command(name='reset_channel')
+@bot.command(name='reset_threads')
 @commands.has_permissions(administrator=True)
-async def reset_channel(ctx, channel_type: str = None):
-    """Resetea los mensajes de un canal (solo admins)"""
+async def reset_threads(ctx, channel_type: str = None):
+    """Resetea los hilos de un canal (solo admins)"""
     if not channel_type or channel_type not in ['actual', 'proximo']:
-        await ctx.send("❌ **Usa:** `!reset_channel actual` o `!reset_channel proximo`")
+        await ctx.send("❌ **Usa:** `!reset_threads actual` o `!reset_threads proximo`")
         return
     
     channel_id = TARGET_CHANNEL_ACTUAL if channel_type == 'actual' else TARGET_CHANNEL_PROXIMO
@@ -895,26 +805,23 @@ async def reset_channel(ctx, channel_type: str = None):
         await ctx.send(f"❌ **No se encontró el canal**")
         return
     
-    # Limpiar mensajes del canal
-    async for message in channel.history(limit=100):
-        if message.author == bot.user:
-            try:
-                await message.delete()
-                await asyncio.sleep(0.5)
-            except:
-                pass
+    # Archivar todos los hilos del canal
+    async for thread in channel.threads:
+        try:
+            await thread.edit(archived=True)
+            await asyncio.sleep(0.5)
+        except:
+            pass
     
-    # Limpiar registro de mensajes
-    message_manager.clear_channel(channel_id)
+    thread_manager.clear_channel(channel_id)
     
-    await ctx.send(f"✅ **Canal {channel_type} reseteado. Los mensajes se recrearán en la próxima actualización.**")
+    await ctx.send(f"✅ **Hilos del canal {channel_type} archivados. Se recrearán en la próxima actualización.**")
 
 @bot.command(name='stats')
 async def banner_stats(ctx):
     """Muestra estadísticas de los warps"""
     banners = scraper.get_banners()
     
-    # Clasificar
     now = datetime.now()
     banners_actuales = []
     banners_proximos = []
@@ -958,9 +865,9 @@ async def on_command_error(ctx, error):
     elif isinstance(error, discord.Forbidden):
         logger.error(f"Error de permisos: {error}")
         try:
-            await ctx.send("❌ **El bot no tiene permisos suficientes en este canal.** Por favor, verifica que tenga permisos de 'Enviar mensajes' y 'Insertar enlaces'.")
+            await ctx.send("❌ **El bot no tiene permisos suficientes en este canal.**")
         except:
-            logger.error("No se pudo enviar mensaje de error por falta de permisos")
+            pass
     else:
         logger.error(f"Error en comando: {error}")
         try:
