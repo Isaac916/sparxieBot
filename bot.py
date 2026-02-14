@@ -56,6 +56,13 @@ class BannerScraper:
         self.session.headers.update(self.headers)
         # Imagen por defecto para fallback
         self.default_image = "https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png"
+        
+        # Mapeo de elementos a emojis
+        self.element_emojis = {
+            'Physical': '💪', 'Fire': '🔥', 'Ice': '❄️',
+            'Lightning': '⚡', 'Wind': '💨', 'Quantum': '⚛️',
+            'Imaginary': '✨'
+        }
     
     def extract_image_url(self, img_tag) -> str:
         """Extrae la URL completa de la imagen de manera segura"""
@@ -109,52 +116,35 @@ class BannerScraper:
         html = str(item)
         
         # Características de un warp banner:
-        # 1. Tiene clase 'swan' en el accordion-item (los warps tienen clase 'swan')
-        # 2. Tiene secciones 'featured-characters' o 'featured-cone'
-        # 3. Tiene p.featured con rarezas (5★, 4★)
+        # 1. Tiene 'event-name' (todos los items lo tienen)
+        # 2. Tiene 'Event Duration' (todos lo tienen)
+        # 3. TIENE 'featured' con rarezas (5★ o 4★)
+        # 4. TIENE secciones de personajes O conos
         
-        has_swan_class = 'swan' in item.get('class', []) if item.has_attr('class') else False
+        has_featured_text = 'featured' in html and ('5★' in html or '4★' in html)
         has_featured_chars = 'featured-characters' in html
         has_featured_cones = 'featured-cone' in html
-        has_featured_text = 'featured' in html and ('5★' in html or '4★' in html)
-        has_event_name = 'event-name' in html
+        has_avatar_cards = 'avatar-card' in html
+        has_cone_items = 'hsr-set-image' in html
         
-        # Los warps SIEMPRE tienen swan class O featured content
-        return (has_swan_class or has_featured_chars or has_featured_cones) and has_featured_text and has_event_name
-    
-    def classify_banner_type(self, item) -> str:
-        """Clasifica si es banner de personaje, cono o mixto"""
-        html = str(item).lower()
-        has_chars = 'featured-characters' in html
-        has_cones = 'featured-cone' in html
-        
-        # Verificar si tiene personajes 5★
-        has_5star_char = '5★' in html and 'character' in html
-        
-        if has_chars and not has_cones:
-            return "Personaje"
-        elif has_cones and not has_chars:
-            return "Cono de Luz"
-        else:
-            return "Mixto (Doble)"
+        # Los warps SIEMPRE tienen featured text Y (personajes O conos)
+        return has_featured_text and (has_featured_chars or has_featured_cones or has_avatar_cards or has_cone_items)
     
     def parse_character(self, card) -> dict:
-        """Parsea un personaje de avatar-card"""
+        """Parsea un personaje de avatar-card y extrae su imagen"""
         try:
             a_tag = card.find('a')
             name = "Unknown"
+            char_key = ""
             
             if a_tag and a_tag.get('href'):
                 href = a_tag.get('href', '')
-                name = href.split('/')[-1].replace('-', ' ').title()
+                char_key = href.split('/')[-1]
+                name = char_key.replace('-', ' ').title()
             
-            # Imagen
+            # Imagen - prioridad a la extraída del HTML
             img_tag = card.find('img')
             image_url = self.extract_image_url(img_tag)
-            
-            # Si no hay imagen válida, usar la imagen por defecto
-            if not image_url:
-                image_url = self.default_image
             
             # Elemento
             element = "Unknown"
@@ -168,9 +158,25 @@ class BannerScraper:
             card_html = str(card)
             rarity = 5 if 'rarity-5' in card_html or 'rar-5' in card_html else 4
             
+            # Si no hay imagen, intentar construirla desde Fandom como respaldo
+            if not image_url and char_key:
+                # Intentar con Fandom Wiki
+                fandom_urls = {
+                    'black-swan': 'https://static.wikia.nocookie.net/houkai-star-rail/images/e/e4/Character_Black_Swan_Splash_Art.png',
+                    'pela': 'https://static.wikia.nocookie.net/houkai-star-rail/images/6/6f/Character_Pela_Splash_Art.png',
+                    'hanya': 'https://static.wikia.nocookie.net/houkai-star-rail/images/e/e9/Character_Hanya_Splash_Art.png',
+                    'qingque': 'https://static.wikia.nocookie.net/houkai-star-rail/images/0/0c/Character_Qingque_Splash_Art.png',
+                    'march-7th-evernight': 'https://static.wikia.nocookie.net/houkai-star-rail/images/9/9c/Character_March_7th_Evernight_Splash_Art.png',
+                    'hysilens': self.default_image,
+                    'yao-guang': self.default_image,
+                    'saber': self.default_image,
+                    'archer': self.default_image
+                }
+                image_url = fandom_urls.get(char_key, self.default_image)
+            
             return {
                 'name': name,
-                'image': image_url,
+                'image': image_url if image_url else self.default_image,
                 'element': element,
                 'rarity': rarity
             }
@@ -184,7 +190,7 @@ class BannerScraper:
             }
     
     def parse_light_cone(self, cone_item) -> dict:
-        """Parsea un cono de luz"""
+        """Parsea un cono de luz y extrae su imagen"""
         try:
             name_tag = cone_item.find('span', class_='hsr-set-name')
             name = name_tag.text.strip() if name_tag else "Unknown"
@@ -192,12 +198,12 @@ class BannerScraper:
             img_tag = cone_item.find('img')
             image_url = self.extract_image_url(img_tag)
             
-            # Si no hay imagen válida, usar la imagen por defecto
-            if not image_url:
-                image_url = self.default_image
-            
             cone_html = str(cone_item)
             rarity = 5 if 'rarity-5' in cone_html or 'rar-5' in cone_html else 4
+            
+            # Si no hay imagen, usar imagen por defecto
+            if not image_url:
+                image_url = self.default_image
             
             return {
                 'name': name,
@@ -255,8 +261,29 @@ class BannerScraper:
         
         return featured_5star_cone, featured_4star_cone
     
+    def classify_banner_type(self, item, chars5, chars4, cones5, cones4) -> str:
+        """Clasifica el tipo de banner basado en lo que contiene"""
+        has_chars = len(chars5) + len(chars4) > 0
+        has_cones = len(cones5) + len(cones4) > 0
+        
+        if has_chars and not has_cones:
+            return "Personaje"
+        elif has_cones and not has_chars:
+            return "Cono de Luz"
+        elif has_chars and has_cones:
+            return "Mixto (Doble)"
+        else:
+            # Intentar deducir por el texto
+            html = str(item).lower()
+            if 'character' in html and 'light cone' not in html:
+                return "Personaje"
+            elif 'light cone' in html and 'character' not in html:
+                return "Cono de Luz"
+            else:
+                return "Mixto"
+    
     def get_banners(self):
-        """Obtiene TODOS los banners de warps (actuales y futuros)"""
+        """Obtiene TODOS los banners de warps"""
         try:
             logger.info(f"Obteniendo banners desde {self.url}")
             response = self.session.get(self.url, timeout=15)
@@ -271,7 +298,7 @@ class BannerScraper:
             banners = []
             
             for item in all_items:
-                # Verificar si es un WARP
+                # Verificar si es un WARP por su contenido
                 if not self.is_warp_banner(item):
                     continue
                 
@@ -288,12 +315,13 @@ class BannerScraper:
                     duration_tag = item.find('p', class_='duration')
                     duration_text = duration_tag.text.strip() if duration_tag else ""
                     
-                    # Clasificar por tipo
-                    banner_type = self.classify_banner_type(item)
-                    
                     # Extraer personajes y conos
                     featured_5star_char, featured_4star_char = self.extract_characters(item)
                     featured_5star_cone, featured_4star_cone = self.extract_light_cones(item)
+                    
+                    # Determinar tipo basado en lo que tiene
+                    banner_type = self.classify_banner_type(item, featured_5star_char, featured_4star_char, 
+                                                            featured_5star_cone, featured_4star_cone)
                     
                     # Solo crear banner si tiene contenido
                     if (featured_5star_char or featured_4star_char or 
@@ -348,7 +376,7 @@ def get_element_emoji(element: str) -> str:
     return elements.get(element, elements.get(element.lower(), '🔮'))
 
 def create_banner_embed(banner: Banner) -> discord.Embed:
-    """Crea un embed para un banner con manejo seguro de URLs"""
+    """Crea un embed para un banner con imágenes de personajes y conos"""
     
     # Color según tipo
     if banner.banner_type == "Personaje":
@@ -375,82 +403,62 @@ def create_banner_embed(banner: Banner) -> discord.Embed:
             clean_duration = clean_duration[:1021] + "..."
         embed.add_field(name="📅 Duración", value=clean_duration, inline=False)
     
-    # Personajes 5★
+    # Personajes 5★ con imágenes
     if banner.featured_5star_char:
         chars_text = ""
-        for char in banner.featured_5star_char[:6]:
+        for char in banner.featured_5star_char[:4]:  # Máximo 4 personajes
             element_emoji = get_element_emoji(char.get('element', 'Unknown'))
             chars_text += f"{element_emoji} **{char['name']}**\n"
         
         if chars_text:
             embed.add_field(name="✨ Personajes 5★", value=chars_text, inline=True)
+            
+        # Usar la imagen del primer personaje 5★ como thumbnail si no hay thumbnail aún
+        if not embed.thumbnail.url and banner.featured_5star_char[0].get('image'):
+            embed.set_thumbnail(url=banner.featured_5star_char[0]['image'])
     
-    # Personajes 4★
+    # Personajes 4★ con imágenes
     if banner.featured_4star_char:
         chars_text = ""
-        for char in banner.featured_4star_char[:6]:
+        for char in banner.featured_4star_char[:4]:
             element_emoji = get_element_emoji(char.get('element', 'Unknown'))
             chars_text += f"{element_emoji} **{char['name']}**\n"
         
         if chars_text:
             embed.add_field(name="⭐ Personajes 4★", value=chars_text, inline=True)
+        
+        # Usar la imagen del primer personaje 4★ como thumbnail si no hay thumbnail y no hay 5★
+        if not embed.thumbnail.url and banner.featured_4star_char and banner.featured_4star_char[0].get('image'):
+            embed.set_thumbnail(url=banner.featured_4star_char[0]['image'])
     
-    # Conos de luz 5★
+    # Conos de luz 5★ con imágenes
     if banner.featured_5star_cone:
         cones_text = ""
-        for cone in banner.featured_5star_cone[:4]:
+        for cone in banner.featured_5star_cone[:3]:
             cones_text += f"• **{cone['name']}** (★5)\n"
         
         if cones_text:
             embed.add_field(name="💫 Conos de Luz 5★", value=cones_text, inline=False)
+        
+        # Usar la imagen del primer cono 5★ como thumbnail si no hay thumbnail aún
+        if not embed.thumbnail.url and banner.featured_5star_cone and banner.featured_5star_cone[0].get('image'):
+            embed.set_thumbnail(url=banner.featured_5star_cone[0]['image'])
     
-    # Conos de luz 4★
+    # Conos de luz 4★ con imágenes
     if banner.featured_4star_cone:
         cones_text = ""
-        for cone in banner.featured_4star_cone[:4]:
+        for cone in banner.featured_4star_cone[:3]:
             cones_text += f"• **{cone['name']}** (★4)\n"
         
         if cones_text:
             embed.add_field(name="📿 Conos de Luz 4★", value=cones_text, inline=False)
+        
+        # Usar la imagen del primer cono 4★ como thumbnail si no hay thumbnail aún
+        if not embed.thumbnail.url and banner.featured_4star_cone and banner.featured_4star_cone[0].get('image'):
+            embed.set_thumbnail(url=banner.featured_4star_cone[0]['image'])
     
-    # THUMBNAIL CON VALIDACIÓN ESTRICTA
-    thumbnail_url = None
-    
-    # Buscar una imagen válida en orden de prioridad
-    if banner.featured_5star_char and len(banner.featured_5star_char) > 0:
-        for char in banner.featured_5star_char:
-            if char.get('image') and char['image'].startswith(('http://', 'https://')):
-                thumbnail_url = char['image']
-                break
-    
-    if not thumbnail_url and banner.featured_5star_cone and len(banner.featured_5star_cone) > 0:
-        for cone in banner.featured_5star_cone:
-            if cone.get('image') and cone['image'].startswith(('http://', 'https://')):
-                thumbnail_url = cone['image']
-                break
-    
-    if not thumbnail_url and banner.featured_4star_char and len(banner.featured_4star_char) > 0:
-        for char in banner.featured_4star_char:
-            if char.get('image') and char['image'].startswith(('http://', 'https://')):
-                thumbnail_url = char['image']
-                break
-    
-    if not thumbnail_url and banner.featured_4star_cone and len(banner.featured_4star_cone) > 0:
-        for cone in banner.featured_4star_cone:
-            if cone.get('image') and cone['image'].startswith(('http://', 'https://')):
-                thumbnail_url = cone['image']
-                break
-    
-    # Si no hay ninguna imagen válida, usar la imagen por defecto
-    if not thumbnail_url:
-        thumbnail_url = "https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png"
-    
-    # Establecer thumbnail
-    try:
-        embed.set_thumbnail(url=thumbnail_url)
-    except Exception as e:
-        logger.error(f"Error estableciendo thumbnail: {e}")
-        # Si falla, intentar con la imagen por defecto
+    # Si aún no hay thumbnail, usar imagen por defecto
+    if not embed.thumbnail.url:
         embed.set_thumbnail(url="https://static.wikia.nocookie.net/houkai-star-rail/images/8/83/Site-logo.png")
     
     # Footer con totales
@@ -464,7 +472,7 @@ def create_banner_embed(banner: Banner) -> discord.Embed:
 # VARIABLES DE ENTORNO
 # ============================================
 logger.info("=" * 60)
-logger.info("INICIANDO BOT DE HONKAI STAR RAIL - DETECTOR DE MÚLTIPLES BANNERS")
+logger.info("INICIANDO BOT DE HONKAI STAR RAIL - VERSIÓN CON IMÁGENES")
 logger.info("=" * 60)
 
 TOKEN = os.environ.get('DISCORD_TOKEN')
@@ -643,9 +651,18 @@ async def on_command_error(ctx, error):
         await ctx.send("❌ Comando no encontrado. Usa `!banners`")
     elif isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ No tienes permiso para usar este comando")
+    elif isinstance(error, discord.Forbidden):
+        logger.error(f"Error de permisos: {error}")
+        try:
+            await ctx.send("❌ El bot no tiene permisos suficientes en este canal. Por favor, verifica que tenga permisos de 'Enviar mensajes' y 'Insertar enlaces'.")
+        except:
+            logger.error("No se pudo enviar mensaje de error por falta de permisos")
     else:
         logger.error(f"Error en comando: {error}")
-        await ctx.send(f"❌ Error: {str(error)[:100]}")
+        try:
+            await ctx.send(f"❌ Error: {str(error)[:100]}")
+        except:
+            pass
 
 # ============================================
 # INICIAR BOT
